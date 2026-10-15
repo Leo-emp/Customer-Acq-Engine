@@ -383,6 +383,10 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
 }) {
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isBatchDrafting, setIsBatchDrafting] = useState(false);
+  const [isSending, setIsSending] = useState<string | null>(null);
+  const [isBatchSending, setIsBatchSending] = useState(false);
+  const [isFollowingUp, setIsFollowingUp] = useState<string | null>(null);
 
   const handleDraftEmail = async (prospect: Prospect) => {
     if (!profile) return;
@@ -394,13 +398,7 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
       const res = await fetch("/api/agents/outreach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "draft",
-          prospect,
-          productDescription: profile.productDescription,
-          senderName: profile.senderName,
-          profile,
-        }),
+        body: JSON.stringify({ action: "draft", prospect, profile }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -415,33 +413,171 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
     }
   };
 
+  const handleDraftAll = async () => {
+    if (!profile || prospects.length === 0) return;
+    const undrafted = prospects.filter((p) => !emails.some((e) => e.prospectId === p.id));
+    if (undrafted.length === 0) return;
+
+    setIsBatchDrafting(true);
+    onAddEvent({ agent: "outreach", status: "working", message: `Batch drafting ${undrafted.length} emails...`, timestamp: Date.now() });
+
+    try {
+      const res = await fetch("/api/agents/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "draft-all", prospects: undrafted, profile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      onAddEmails(data.emails);
+      onAddEvent({ agent: "outreach", status: "done", message: `${data.emails.length} emails drafted`, timestamp: Date.now() });
+    } catch (err) {
+      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Batch draft failed", timestamp: Date.now() });
+    } finally {
+      setIsBatchDrafting(false);
+    }
+  };
+
+  const handleSendEmail = async (email: EmailDraft) => {
+    if (!profile) return;
+    setIsSending(email.prospectId);
+    onAddEvent({ agent: "outreach", status: "working", message: `Sending email to ${email.to}`, timestamp: Date.now() });
+
+    try {
+      const res = await fetch("/api/agents/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send", draft: email, profile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      onAddEmails([data.email]);
+      onAddEvent({ agent: "outreach", status: "done", message: `Email sent to ${email.to}`, timestamp: Date.now() });
+    } catch (err) {
+      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Send failed", timestamp: Date.now() });
+    } finally {
+      setIsSending(null);
+    }
+  };
+
+  const handleSendAll = async () => {
+    const unsent = emails.filter((e) => !e.sentAt);
+    if (unsent.length === 0 || !profile) return;
+
+    setIsBatchSending(true);
+    onAddEvent({ agent: "outreach", status: "working", message: `Sending ${unsent.length} emails...`, timestamp: Date.now() });
+
+    try {
+      const res = await fetch("/api/agents/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send-all", draft: unsent, profile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      onAddEmails(data.sent);
+      onAddEvent({ agent: "outreach", status: "done", message: `${data.sentCount} sent, ${data.failedCount} failed`, timestamp: Date.now() });
+    } catch (err) {
+      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Batch send failed", timestamp: Date.now() });
+    } finally {
+      setIsBatchSending(false);
+    }
+  };
+
+  const handleFollowUp = async (email: EmailDraft) => {
+    const prospect = prospects.find((p) => p.id === email.prospectId);
+    if (!prospect || !profile) return;
+
+    setIsFollowingUp(email.prospectId);
+    onAddEvent({ agent: "outreach", status: "working", message: `Writing follow-up for ${prospect.companyName}`, timestamp: Date.now() });
+
+    try {
+      const res = await fetch("/api/agents/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "followup", prospect, originalEmail: email, profile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      onAddEmails([data.email]);
+      onAddEvent({ agent: "outreach", status: "done", message: `Follow-up drafted for ${prospect.companyName}`, timestamp: Date.now() });
+    } catch (err) {
+      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Follow-up failed", timestamp: Date.now() });
+    } finally {
+      setIsFollowingUp(null);
+    }
+  };
+
+  const undraftedCount = prospects.filter((p) => !emails.some((e) => e.prospectId === p.id)).length;
+  const unsentCount = emails.filter((e) => !e.sentAt).length;
+  const sentCount = emails.filter((e) => e.sentAt).length;
+  const isBusy = isDrafting || isBatchDrafting || isBatchSending;
+
   return (
     <div className="space-y-4">
-      {/* prospect selector for manual drafting */}
+      {/* batch action bar */}
       {prospects.length > 0 && (
-        <div className="glass-card p-4">
-          <p className="text-xs text-text-muted mb-3">Select a prospect to draft a personalized email</p>
+        <div className="glass-card p-4 border border-amber-500/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Mail size={16} className="text-amber-400" />
+              <h4 className="text-sm font-semibold text-text-primary">Outreach Campaign</h4>
+            </div>
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="text-text-muted">{prospects.length} prospects</span>
+              <span className="text-amber-400">{emails.length} drafted</span>
+              <span className="text-emerald-400">{sentCount} sent</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={handleDraftAll} disabled={undraftedCount === 0 || isBusy || !profile}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
+              {isBatchDrafting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              {isBatchDrafting ? "Drafting..." : `Draft all (${undraftedCount})`}
+            </button>
+            <button onClick={handleSendAll} disabled={unsentCount === 0 || isBusy}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
+              {isBatchSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {isBatchSending ? "Sending..." : `Send all drafts (${unsentCount})`}
+            </button>
+          </div>
+
+          {/* prospect grid */}
+          <p className="text-xs text-text-muted mb-2">Or select individually:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
             {prospects.map((p) => {
-              const hasEmail = emails.some(e => e.prospectId === p.id);
+              const email = emails.find((e) => e.prospectId === p.id);
+              const hasEmail = !!email;
+              const isSent = !!email?.sentAt;
               return (
-                <button key={p.id} onClick={() => !hasEmail && !isDrafting && handleDraftEmail(p)} disabled={hasEmail || isDrafting || !profile}
+                <button key={p.id} onClick={() => !hasEmail && !isBusy && handleDraftEmail(p)} disabled={hasEmail || isBusy || !profile}
                   className={`text-left p-3 rounded-lg border transition-all ${
-                    hasEmail ? "border-emerald-500/20 bg-emerald-500/5" :
-                    selectedProspect?.id === p.id ? "border-amber-500/30 bg-amber-500/5" :
+                    isSent ? "border-emerald-500/20 bg-emerald-500/5" :
+                    hasEmail ? "border-amber-500/20 bg-amber-500/5" :
+                    selectedProspect?.id === p.id ? "border-amber-500/30 bg-amber-500/10" :
                     "border-card-border bg-space-800 hover:bg-space-700 cursor-pointer"
                   } disabled:cursor-not-allowed`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-primary">{p.companyName}</span>
-                    {hasEmail && <CheckCircle2 size={14} className="text-emerald-400" />}
-                    {selectedProspect?.id === p.id && isDrafting && <Loader2 size={14} className="text-amber-400 animate-spin" />}
+                    <span className="text-sm font-medium text-text-primary truncate">{p.companyName}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {isSent && <CheckCircle2 size={14} className="text-emerald-400" />}
+                      {hasEmail && !isSent && <Clock size={14} className="text-amber-400" />}
+                      {selectedProspect?.id === p.id && isDrafting && <Loader2 size={14} className="text-amber-400 animate-spin" />}
+                    </div>
                   </div>
-                  <p className="text-[11px] text-text-muted">{p.contactName} &middot; {p.email}</p>
+                  <p className="text-[11px] text-text-muted truncate">{p.contactName} &middot; {p.email}</p>
+                  {isSent && <p className="text-[10px] text-emerald-400 mt-1">Sent</p>}
+                  {hasEmail && !isSent && <p className="text-[10px] text-amber-400 mt-1">Draft ready</p>}
                 </button>
               );
             })}
           </div>
-          {!profile && <p className="text-xs text-amber-400 mt-2">Set up Brand Brain first to enable email drafting</p>}
+          {!profile && <p className="text-xs text-amber-400 mt-2">Set up Brand Brain first to enable outreach</p>}
         </div>
       )}
 
@@ -452,7 +588,68 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
         </div>
       )}
 
-      {emails.length > 0 && <EmailPreview emails={emails} />}
+      {/* email drafts with per-email actions */}
+      {emails.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-text-primary">
+            <Mail size={16} className="text-amber-400" />
+            Emails ({emails.length})
+          </h3>
+
+          {emails.map((email, i) => {
+            const prospect = prospects.find((p) => p.id === email.prospectId);
+            return (
+              <div key={`${email.prospectId}-${i}`} className="glass-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-card-border flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-xs text-text-muted">
+                      <span>To:</span>
+                      <span className="text-text-primary">{email.to}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-text-muted mt-1">
+                      <span>Subject:</span>
+                      <span className="text-text-primary font-medium">{email.subject}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {email.sentAt ? (
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-[11px] text-emerald-400 font-medium">
+                        <CheckCircle2 size={12} /> Sent
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-[11px] text-amber-400 font-medium">
+                        <Clock size={12} /> Draft
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-4 py-3">
+                  <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
+                </div>
+
+                {/* per-email action buttons */}
+                <div className="px-4 py-2.5 border-t border-card-border flex items-center gap-2">
+                  {!email.sentAt && (
+                    <button onClick={() => handleSendEmail(email)} disabled={isSending === email.prospectId || isBusy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
+                      {isSending === email.prospectId ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                      Send
+                    </button>
+                  )}
+                  {email.sentAt && prospect && (
+                    <button onClick={() => handleFollowUp(email)} disabled={isFollowingUp === email.prospectId || isBusy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
+                      {isFollowingUp === email.prospectId ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+                      Follow-up
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {callProspect && (
         <VoiceCall prospect={callProspect} callScript={callScript} agentId={callAgentId} onCallComplete={onCallComplete} />
