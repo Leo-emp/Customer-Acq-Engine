@@ -187,7 +187,13 @@ export default function Sidebar({
                     <span className={`text-sm font-medium ${isActive ? agent.color : ""}`}>{agent.name}</span>
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[status]}`} />
                   </div>
-                  <p className="text-[10px] text-text-muted truncate">{agent.title} Agent</p>
+                  {(status === "thinking" || status === "working") ? (
+                    <p className="text-[10px] text-brand-glow font-medium animate-pulse truncate">Working...</p>
+                  ) : status === "done" ? (
+                    <p className="text-[10px] text-emerald-400 truncate">Complete</p>
+                  ) : (
+                    <p className="text-[10px] text-text-muted truncate">{agent.title} Agent</p>
+                  )}
                 </div>
                 {count > 0 && (
                   <span className="text-[10px] text-text-muted bg-space-700 px-1.5 py-0.5 rounded-md">{count}</span>

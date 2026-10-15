@@ -242,6 +242,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             onAddEvent={onAddEvent}
             quickAction={quickAction}
             profile={profile}
+            prospects={prospects}
           />
         )}
 
@@ -460,15 +461,21 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
   );
 }
 
-function SalesTool({ callRecord, onAddEvent, quickAction, profile }: {
+function SalesTool({ callRecord, onAddEvent, quickAction, profile, prospects }: {
   callRecord: CallRecord | null;
   onAddEvent: (event: AgentEvent) => void;
   quickAction: string;
   profile: CompanyProfile | null;
+  prospects: Prospect[];
 }) {
   const [transcript, setTranscript] = useState("");
   const [prospectName, setProspectName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [isCalling, setIsCalling] = useState(false);
+  const [callStatus, setCallStatus] = useState<"idle" | "ringing" | "in-progress" | "completed" | "failed">("idle");
+  const [activeCallId, setActiveCallId] = useState("");
+  const [liveTranscript, setLiveTranscript] = useState("");
   const placeholders: Record<string, string> = {
     "transcript": "Paste your call transcript here...",
     "email-thread": "Paste the email thread here...",
@@ -480,6 +487,67 @@ function SalesTool({ callRecord, onAddEvent, quickAction, profile }: {
   const placeholder = placeholders[quickAction] || "Paste your call transcript or conversation here...";
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<{ outcome: string; summary: string; nextAction: string; insights: string[]; pdfDataUrl: string } | null>(null);
+
+  const handleSelectProspect = (p: Prospect) => {
+    setProspectName(p.contactName);
+    setCompanyName(p.companyName);
+  };
+
+  const handleMakeCall = async () => {
+    if (!phoneNumber.trim()) return;
+    setIsCalling(true);
+    setCallStatus("ringing");
+    setLiveTranscript("");
+    setResult(null);
+    onAddEvent({ agent: "sales", status: "working", message: `Calling ${prospectName || phoneNumber}...`, timestamp: Date.now() });
+
+    try {
+      const salesContext = profile
+        ? `Company: ${profile.companyName}\nProduct: ${profile.productDescription}\nValue Prop: ${profile.valueProposition}\nTarget: ${profile.targetMarket}\nPricing: ${profile.pricing || "Contact for pricing"}`
+        : "General sales call";
+
+      const res = await fetch("/api/agents/call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: phoneNumber.trim(),
+          prospectName: prospectName.trim() || "there",
+          companyName: companyName.trim() || "your company",
+          salesContext,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setActiveCallId(data.callId);
+      setCallStatus("in-progress");
+      onAddEvent({ agent: "sales", status: "working", message: `Call connected (${data.callSid})`, timestamp: Date.now() });
+
+      // poll for transcript every 5 seconds
+      const pollInterval = setInterval(async () => {
+        try {
+          const tRes = await fetch(`/api/agents/call/transcript?callId=${data.callId}`);
+          const tData = await tRes.json();
+          if (tData.transcript) setLiveTranscript(tData.transcript);
+          if (tData.status === "completed" || tData.status === "failed" || tData.status === "busy" || tData.status === "no-answer") {
+            clearInterval(pollInterval);
+            setCallStatus("completed");
+            setIsCalling(false);
+            if (tData.transcript) {
+              setTranscript(tData.transcript);
+              onAddEvent({ agent: "sales", status: "done", message: `Call ended — ${tData.turns} turns, ${tData.duration || 0}s`, timestamp: Date.now() });
+            } else {
+              onAddEvent({ agent: "sales", status: "done", message: `Call ended (${tData.status})`, timestamp: Date.now() });
+            }
+          }
+        } catch { /* keep polling */ }
+      }, 5000);
+    } catch (err) {
+      setCallStatus("failed");
+      setIsCalling(false);
+      onAddEvent({ agent: "sales", status: "error", message: err instanceof Error ? err.message : "Call failed", timestamp: Date.now() });
+    }
+  };
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -508,6 +576,60 @@ function SalesTool({ callRecord, onAddEvent, quickAction, profile }: {
 
   return (
     <div className="space-y-4">
+      {/* outbound call section */}
+      <div className="glass-card p-4 border border-emerald-500/20">
+        <div className="flex items-center gap-2 mb-3">
+          <Phone size={16} className="text-emerald-400" />
+          <h4 className="text-sm font-semibold text-text-primary">AI Voice Call</h4>
+          {callStatus !== "idle" && (
+            <span className={`ml-auto px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+              callStatus === "ringing" ? "bg-amber-500/20 text-amber-400 animate-pulse" :
+              callStatus === "in-progress" ? "bg-emerald-500/20 text-emerald-400 animate-pulse" :
+              callStatus === "completed" ? "bg-blue-500/20 text-blue-400" :
+              "bg-rose-500/20 text-rose-400"
+            }`}>{callStatus}</span>
+          )}
+        </div>
+        <p className="text-xs text-text-muted mb-3">Make a real outbound call — AI handles the sales conversation, then generates a transcript + PDF report</p>
+
+        {/* prospect quick-select */}
+        {prospects.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {prospects.slice(0, 6).map((p) => (
+              <button key={p.id} onClick={() => handleSelectProspect(p)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                  prospectName === p.contactName ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-400" : "bg-space-800 border border-card-border text-text-secondary hover:bg-space-700"
+                }`}>
+                {p.contactName} @ {p.companyName}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+1 234 567 8900"
+            className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-emerald-500/50 text-text-primary placeholder:text-text-muted" disabled={isCalling} />
+          <input type="text" value={prospectName} onChange={(e) => setProspectName(e.target.value)} placeholder="Contact name"
+            className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-emerald-500/50 text-text-primary placeholder:text-text-muted" disabled={isCalling} />
+          <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company name"
+            className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-emerald-500/50 text-text-primary placeholder:text-text-muted" disabled={isCalling} />
+        </div>
+
+        <button onClick={handleMakeCall} disabled={!phoneNumber.trim() || isCalling}
+          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
+          {isCalling ? (<><Loader2 size={16} className="animate-spin" /> Call in progress...</>) : (<><Phone size={16} /> Make Call</>)}
+        </button>
+
+        {/* live transcript */}
+        {liveTranscript && (
+          <div className="mt-3 bg-space-800 rounded-lg p-3 border border-card-border max-h-40 overflow-y-auto">
+            <p className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Live Transcript</p>
+            <pre className="text-xs text-text-secondary whitespace-pre-wrap font-sans leading-relaxed">{liveTranscript}</pre>
+          </div>
+        )}
+      </div>
+
+      {/* transcript analysis section */}
       <form onSubmit={handleAnalyze} className="glass-card p-4">
         <p className="text-xs text-text-muted mb-3">Paste a call transcript, email thread, or meeting notes — Closer will analyze the deal and generate a structured PDF report</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
