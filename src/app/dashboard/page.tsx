@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import type { ViewMode } from "@/components/Sidebar";
 import AgentPage from "@/components/AgentPage";
@@ -19,7 +19,13 @@ import type {
 } from "@/lib/types";
 
 export default function Home() {
-  const [profile, setProfile] = useState<CompanyProfile | null>(null);
+  // # load Brand Brain profile from localStorage so it persists across refreshes
+  const [profile, setProfile] = useState<CompanyProfile | null>(() => {
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("brandProfile") : null;
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [showSetup, setShowSetup] = useState(false);
   const [stage, setStage] = useState<PipelineStage>("idle");
   const [isRunning, setIsRunning] = useState(false);
@@ -36,6 +42,13 @@ export default function Home() {
   const [callAgentId, setCallAgentId] = useState("");
   const [activeView, setActiveView] = useState<ViewMode>("overview");
   const emailsRef = useRef<EmailDraft[]>([]);
+
+  // # persist Brand Brain profile to localStorage on every change
+  useEffect(() => {
+    try {
+      if (profile) localStorage.setItem("brandProfile", JSON.stringify(profile));
+    } catch {}
+  }, [profile]);
 
   const handleSSEEvent = useCallback((data: { type: string; payload: Record<string, unknown> }) => {
     switch (data.type) {
