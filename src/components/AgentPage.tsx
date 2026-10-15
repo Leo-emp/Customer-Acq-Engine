@@ -1796,6 +1796,24 @@ function SalesTool({ callRecord, onAddEvent, quickAction, profile, prospects }: 
   );
 }
 
+// # cached invoice matching the Salesforce → MedVista PDF
+const DEMO_CACHED_INVOICE: Invoice = {
+  id: "INV-SF2026-001",
+  prospectId: "p1",
+  companyName: "MedVista Health Systems",
+  contactName: "Dr. Rachel Torres",
+  items: [
+    { description: "Salesforce Sales Cloud Enterprise — 50 user licenses (Annual)", quantity: 50, unitPrice: 1980 },
+    { description: "Salesforce Service Cloud Professional — 20 user licenses (Annual)", quantity: 20, unitPrice: 960 },
+    { description: "Einstein AI Add-on — 50 seats (Annual)", quantity: 50, unitPrice: 600 },
+    { description: "Implementation & Configuration Services", quantity: 1, unitPrice: 45000 },
+    { description: "Data Migration & Integration (SAP and legacy CRM)", quantity: 1, unitPrice: 28000 },
+    { description: "Training Program — Administrator and end-user training (40 hours)", quantity: 1, unitPrice: 12000 },
+  ],
+  total: 233200,
+  createdAt: "2026-10-16T00:00:00.000Z",
+};
+
 function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
   invoice: Invoice | null;
   pdfDataUrl: string;
@@ -1803,26 +1821,34 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
   onAddEvent: (event: AgentEvent) => void;
   prospects: Prospect[];
 }) {
-  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
-  const [companyName, setCompanyName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [dealDesc, setDealDesc] = useState("");
+  // # pre-fill all 4 fields from the cached Salesforce → MedVista deal
+  const [companyName, setCompanyName] = useState("MedVista Health Systems");
+  const [contactName, setContactName] = useState("Dr. Rachel Torres");
+  const [goodsServices, setGoodsServices] = useState("Sales Cloud Enterprise (50 licenses), Service Cloud Professional (20 licenses), Einstein AI Add-on (50 seats), Implementation & Configuration, Data Migration & Integration, Training Program");
+  const [price, setPrice] = useState("$233,200.00");
   const [isGenerating, setIsGenerating] = useState(false);
   const [genInvoice, setGenInvoice] = useState<Invoice | null>(null);
   const [genPdf, setGenPdf] = useState("");
-
-  const handleSelectProspect = (p: Prospect) => {
-    setSelectedProspect(p);
-    setCompanyName(p.companyName);
-    setContactName(p.contactName);
-  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     const client = companyName.trim();
     if (!client) return;
     setIsGenerating(true);
-    onAddEvent({ agent: "admin", status: "working", message: `Generating invoice for ${client}`, timestamp: Date.now() });
+    onAddEvent({ agent: "admin", status: "working", message: `Generating invoice for ${client}...`, timestamp: Date.now() });
+
+    // # demo mode: show cached invoice with realistic delay
+    if (DEMO_MODE) {
+      await new Promise(r => setTimeout(r, 1500));
+      onAddEvent({ agent: "admin", status: "working", message: "Calculating line items and totals...", timestamp: Date.now() });
+      await new Promise(r => setTimeout(r, 1500));
+      onAddEvent({ agent: "admin", status: "working", message: "Generating PDF document...", timestamp: Date.now() });
+      await new Promise(r => setTimeout(r, 1000));
+      setGenInvoice(DEMO_CACHED_INVOICE);
+      onAddEvent({ agent: "admin", status: "done", message: `Invoice ${DEMO_CACHED_INVOICE.id} generated — $${DEMO_CACHED_INVOICE.total.toLocaleString()}`, timestamp: Date.now() });
+      setIsGenerating(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/agents/admin", {
@@ -1832,8 +1858,8 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
           action: "generate",
           companyName: client,
           contactName: contactName.trim() || undefined,
-          productDescription: dealDesc.trim() || profile?.productDescription || "Consulting services",
-          dealSummary: dealDesc.trim() || undefined,
+          productDescription: goodsServices.trim() || profile?.productDescription || "Consulting services",
+          dealSummary: goodsServices.trim() || undefined,
           profile,
         }),
       });
@@ -1856,14 +1882,17 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
   return (
     <div className="space-y-4">
       <form onSubmit={handleGenerate} className="glass-card p-4">
-        <p className="text-xs text-text-muted mb-3">Generate a professional invoice — auto-fills from Brand Brain and pipeline data</p>
+        <p className="text-xs text-text-muted mb-3">Generate a professional invoice — pre-filled from the MedVista deal</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Client company name *"
             className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted" disabled={isGenerating} />
           <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name"
             className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted" disabled={isGenerating} />
         </div>
-        <input type="text" value={dealDesc} onChange={(e) => setDealDesc(e.target.value)} placeholder="Product/service description"
+        <textarea value={goodsServices} onChange={(e) => setGoodsServices(e.target.value)} placeholder="Purchasing goods and services"
+          rows={3}
+          className="w-full bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted mb-3 resize-none" disabled={isGenerating} />
+        <input type="text" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Total price"
           className="w-full bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted mb-3" disabled={isGenerating} />
         <button type="submit" disabled={!companyName.trim() || isGenerating}
           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
