@@ -1,24 +1,9 @@
 // ── TwiML webhook: handles the AI conversation loop during a Twilio call ──
-// Twilio calls this URL when the call connects and after each speech gather
 
 import { NextRequest } from "next/server";
 import { agentThink } from "@/lib/gemini";
+import { getCallContexts } from "@/lib/call-context";
 
-interface CallContext {
-  prospectName: string;
-  companyName: string;
-  salesContext: string;
-  transcript: { role: string; text: string }[];
-  turnCount: number;
-  callSid?: string;
-}
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __callContexts: Map<string, CallContext> | undefined;
-}
-
-// return TwiML XML response
 function twiml(xml: string) {
   return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`, {
     headers: { "Content-Type": "text/xml" },
@@ -27,37 +12,33 @@ function twiml(xml: string) {
 
 export async function POST(req: NextRequest) {
   const callId = req.nextUrl.searchParams.get("callId");
-  if (!callId || !globalThis.__callContexts?.has(callId)) {
+  const contexts = getCallContexts();
+
+  if (!callId || !contexts.has(callId)) {
     return twiml('<Say voice="Polly.Matthew">Sorry, something went wrong. Goodbye.</Say><Hangup/>');
   }
 
-  const ctx = globalThis.__callContexts.get(callId)!;
-
-  // parse form data from Twilio
+  const ctx = contexts.get(callId)!;
   const formData = await req.formData();
   const speechResult = formData.get("SpeechResult") as string | null;
   const callStatus = formData.get("CallStatus") as string | null;
 
-  // if call ended, clean up
   if (callStatus === "completed" || callStatus === "busy" || callStatus === "no-answer" || callStatus === "failed") {
     return twiml("<Hangup/>");
   }
 
-  // if we got speech from the prospect, add to transcript
   if (speechResult) {
     ctx.transcript.push({ role: "prospect", text: speechResult });
   }
 
   ctx.turnCount++;
 
-  // max 6 turns then wrap up
   if (ctx.turnCount > 6) {
     const closing = "Thank you so much for your time today. I'll send over a summary email with everything we discussed. Have a great day!";
     ctx.transcript.push({ role: "agent", text: closing });
     return twiml(`<Say voice="Polly.Matthew">${escapeXml(closing)}</Say><Hangup/>`);
   }
 
-  // generate AI response using Gemini
   try {
     const conversationHistory = ctx.transcript
       .map((t) => `${t.role === "agent" ? "You" : "Prospect"}: ${t.text}`)
@@ -92,16 +73,14 @@ Keep it under 25 seconds of speaking time. Do NOT use markdown. Speak naturally.
       prompt
     );
     const cleanResponse = aiResponse.replace(/[*#_`]/g, "").trim();
-
     ctx.transcript.push({ role: "agent", text: cleanResponse });
 
-    // say the response and gather the next speech input
     return twiml(
       `<Say voice="Polly.Matthew">${escapeXml(cleanResponse)}</Say>` +
       `<Gather input="speech" speechTimeout="3" timeout="8" action="/api/agents/call/twiml?callId=${callId}" method="POST">` +
       `<Say voice="Polly.Matthew"> </Say>` +
       `</Gather>` +
-      `<Say voice="Polly.Matthew">It seems like you might be busy. I'll follow up via email. Thank you for your time!</Say><Hangup/>`
+      `<Say voice="Polly.Matthew">It seems like you might be busy. I'll follow up via email instead. Thank you for your time!</Say><Hangup/>`
     );
   } catch {
     return twiml('<Say voice="Polly.Matthew">I apologize, let me follow up with you via email instead. Thank you for your time!</Say><Hangup/>');

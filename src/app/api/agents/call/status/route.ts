@@ -1,6 +1,7 @@
 // ── Twilio call status webhook — fires when the call completes ──
 
 import { NextRequest } from "next/server";
+import { getCallContexts } from "@/lib/call-context";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -8,17 +9,14 @@ export async function POST(req: NextRequest) {
   const callStatus = formData.get("CallStatus") as string;
   const duration = formData.get("CallDuration") as string;
 
-  // find the context for this call
-  if (globalThis.__callContexts) {
-    for (const [, ctx] of globalThis.__callContexts) {
-      if ((ctx as Record<string, unknown>).callSid === callSid) {
-        (ctx as Record<string, unknown>).finalStatus = callStatus;
-        (ctx as Record<string, unknown>).duration = parseInt(duration || "0");
-        break;
-      }
+  const contexts = getCallContexts();
+  for (const [, ctx] of contexts) {
+    if (ctx.callSid === callSid) {
+      ctx.finalStatus = callStatus;
+      ctx.duration = parseInt(duration || "0");
+      break;
     }
   }
 
-  // Twilio expects 200 OK
   return new Response("OK", { status: 200 });
 }
