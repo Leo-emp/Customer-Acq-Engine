@@ -125,6 +125,13 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
   const latestStatus = (agentEvents[agentEvents.length - 1]?.status || "idle") as AgentStatus;
   const statusCfg = STATUS_CONFIG[latestStatus];
   const [quickAction, setQuickAction] = useState<string>("");
+  const [quickActionTick, setQuickActionTick] = useState(0);
+
+  // # fire action immediately on button click — tick ensures re-clicks work
+  const handleQuickAction = (action: string) => {
+    setQuickAction(action);
+    setQuickActionTick((t) => t + 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -154,7 +161,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
           <h3 className="text-sm font-semibold text-text-primary mb-3">Quick Actions</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {meta.capabilities.map((cap, i) => (
-              <button key={i} onClick={() => setQuickAction(cap.prompt || cap.action || cap.label)}
+              <button key={i} onClick={() => handleQuickAction(cap.prompt || cap.action || cap.label)}
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all cursor-pointer text-left group ${
                   quickAction === (cap.prompt || cap.action || cap.label)
                     ? `${meta.borderColor} bg-space-700`
@@ -217,6 +224,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             onAddEvent={onAddEvent}
             profile={profile}
             quickAction={quickAction}
+            quickActionTick={quickActionTick}
           />
         )}
 
@@ -298,7 +306,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
 
 // ── STANDALONE TOOLS ──
 
-function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddProspects, onAddEvent, profile, quickAction }: {
+function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddProspects, onAddEvent, profile, quickAction, quickActionTick }: {
   prospects: Prospect[];
   activeProspectId?: string;
   onSelectProspect: (p: Prospect) => void;
@@ -306,6 +314,7 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
   onAddEvent: (event: AgentEvent) => void;
   profile: CompanyProfile | null;
   quickAction: string;
+  quickActionTick: number;
 }) {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -315,13 +324,11 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [leadSummary, setLeadSummary] = useState<any>(null);
 
-  // # auto-execute when quick action button is clicked
+  // # auto-execute immediately on every button click (tick changes on each click)
   useEffect(() => {
-    if (quickAction && quickAction !== activeAction && !isSearching) {
-      if (quickAction === "leads") return; // leads needs a query
-      executeAction(quickAction);
-    }
-  }, [quickAction]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!quickAction || quickActionTick === 0 || isSearching) return;
+    executeAction(quickAction);
+  }, [quickActionTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const executeAction = async (action: string, searchQuery?: string) => {
     if (!profile && action !== "leads") {
