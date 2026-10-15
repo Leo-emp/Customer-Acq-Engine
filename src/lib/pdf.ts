@@ -275,3 +275,214 @@ export function generateCallNotePDF(
   drawFooter(doc, pw);
   return doc.output("datauristring");
 }
+
+// ── Competitor Analysis PDF ──
+export function generateCompetitorPDF(data: {
+  competitors: { name: string; description: string; strengths: string[]; weaknesses: string[]; pricing: string; marketPosition: string; threatLevel: string }[];
+  ourAdvantages?: string[];
+  strategicRecommendations?: string[];
+}, companyName: string): string {
+  const doc = new jsPDF();
+  const pw = doc.internal.pageSize.getWidth();
+  const maxW = pw - 48;
+  drawHeader(doc, pw, "COMPETITIVE ANALYSIS", BRAND.rose);
+  let y = 64;
+  doc.setFontSize(10); doc.setTextColor(...BRAND.gray500);
+  doc.text(`Prepared for ${companyName} — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`, 24, y);
+  y += 14;
+
+  for (const comp of data.competitors) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    const threatColors: Record<string, readonly [number, number, number]> = { high: BRAND.rose, medium: BRAND.amber, low: BRAND.emerald };
+    const tc = threatColors[comp.threatLevel] || BRAND.gray500;
+    doc.setFillColor(...BRAND.gray100);
+    drawRoundedRect(doc, 24, y - 4, maxW, 10, 3, "F");
+    doc.setFontSize(12); doc.setTextColor(...BRAND.gray800); doc.text(comp.name, 30, y + 2);
+    doc.setFillColor(...tc);
+    drawRoundedRect(doc, pw - 70, y - 2, 40, 8, 2, "F");
+    doc.setFontSize(7); doc.setTextColor(...BRAND.white);
+    doc.text(`${comp.threatLevel.toUpperCase()} THREAT`, pw - 50, y + 3, { align: "center" });
+    y += 14;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray500);
+    doc.text(`Position: ${comp.marketPosition} | Pricing: ${comp.pricing}`, 30, y); y += 6;
+    const descLines = doc.splitTextToSize(comp.description, maxW - 12);
+    doc.setTextColor(...BRAND.gray800); doc.text(descLines, 30, y); y += descLines.length * 4 + 4;
+    doc.setFontSize(7); doc.setTextColor(...BRAND.emerald); doc.text("STRENGTHS", 30, y); y += 4;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray800);
+    for (const s of comp.strengths.slice(0, 3)) { doc.text(`+ ${s}`, 34, y); y += 4; }
+    y += 2;
+    doc.setFontSize(7); doc.setTextColor(...BRAND.rose); doc.text("WEAKNESSES", 30, y); y += 4;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray800);
+    for (const w of comp.weaknesses.slice(0, 3)) { doc.text(`- ${w}`, 34, y); y += 4; }
+    y += 8;
+  }
+  if (data.ourAdvantages?.length) {
+    if (y > 220) { doc.addPage(); y = 20; }
+    drawSectionLabel(doc, "Our Advantages", 24, y, BRAND.emerald); y += 8;
+    doc.setFontSize(9);
+    for (const a of data.ourAdvantages) {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFillColor(...BRAND.emerald); doc.circle(28, y - 1, 1.5, "F");
+      doc.setTextColor(...BRAND.gray800);
+      const lines = doc.splitTextToSize(a, maxW - 12); doc.text(lines, 34, y); y += lines.length * 4.5 + 4;
+    }
+  }
+  if (data.strategicRecommendations?.length) {
+    y += 4; if (y > 220) { doc.addPage(); y = 20; }
+    drawSectionLabel(doc, "Strategic Recommendations", 24, y, BRAND.blue); y += 8;
+    doc.setFontSize(9);
+    for (let i = 0; i < data.strategicRecommendations.length; i++) {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setTextColor(...BRAND.blue); doc.text(`${i + 1}.`, 28, y);
+      doc.setTextColor(...BRAND.gray800);
+      const lines = doc.splitTextToSize(data.strategicRecommendations[i], maxW - 16); doc.text(lines, 34, y); y += lines.length * 4.5 + 4;
+    }
+  }
+  drawFooter(doc, pw);
+  return doc.output("datauristring");
+}
+
+// ── Industry Research PDF ──
+export function generateIndustryPDF(data: {
+  overview: { industryName: string; marketSize: string; growthRate: string; maturityStage: string; summary: string };
+  trends: { trend: string; impact: string; timeframe: string; relevance: string }[];
+  keyPlayers: { name: string; role: string; marketShare: string }[];
+  opportunities: { opportunity: string; description: string; difficulty: string; potentialRevenue: string }[];
+  outlook: string;
+}, companyName: string): string {
+  const doc = new jsPDF();
+  const pw = doc.internal.pageSize.getWidth();
+  const maxW = pw - 48;
+  drawHeader(doc, pw, "INDUSTRY REPORT", BRAND.blue);
+  let y = 64;
+  doc.setFontSize(10); doc.setTextColor(...BRAND.gray500);
+  doc.text(`${data.overview.industryName} — Prepared for ${companyName}`, 24, y); y += 14;
+
+  const sCardW = (maxW - 8) / 3;
+  [
+    { label: "MARKET SIZE", value: data.overview.marketSize },
+    { label: "GROWTH RATE", value: data.overview.growthRate },
+    { label: "MATURITY", value: data.overview.maturityStage.toUpperCase() },
+  ].forEach((s, i) => {
+    const cx = 24 + i * (sCardW + 4);
+    doc.setFillColor(...BRAND.gray100); drawRoundedRect(doc, cx, y, sCardW, 28, 4, "F");
+    doc.setFontSize(7); doc.setTextColor(...BRAND.gray500); doc.text(s.label, cx + 6, y + 10);
+    doc.setFontSize(14); doc.setTextColor(...BRAND.gray800); doc.text(s.value, cx + 6, y + 22);
+  });
+  y += 38;
+  doc.setFontSize(10); doc.setTextColor(...BRAND.gray800);
+  const sumLines = doc.splitTextToSize(data.overview.summary, maxW); doc.text(sumLines, 24, y); y += sumLines.length * 5 + 10;
+
+  drawSectionLabel(doc, "Key Trends", 24, y, BRAND.blue); y += 8;
+  for (const t of data.trends) {
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFontSize(10); doc.setTextColor(...BRAND.gray800); doc.text(t.trend, 30, y);
+    const relColor: readonly [number, number, number] = t.relevance === "high" ? BRAND.rose : t.relevance === "medium" ? BRAND.amber : BRAND.emerald;
+    doc.setFontSize(7); doc.setTextColor(...relColor);
+    doc.text(`${t.relevance.toUpperCase()} · ${t.timeframe}`, pw - 30, y, { align: "right" }); y += 5;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray500);
+    const impLines = doc.splitTextToSize(t.impact, maxW - 12); doc.text(impLines, 30, y); y += impLines.length * 4 + 6;
+  }
+
+  if (y > 220) { doc.addPage(); y = 20; }
+  drawSectionLabel(doc, "Key Players", 24, y, BRAND.indigo); y += 8;
+  doc.setFillColor(...BRAND.dark); drawRoundedRect(doc, 24, y, maxW, 10, 3, "F");
+  doc.setFontSize(8); doc.setTextColor(...BRAND.white);
+  doc.text("COMPANY", 30, y + 7); doc.text("ROLE", 90, y + 7); doc.text("SHARE", pw - 30, y + 7, { align: "right" }); y += 14;
+  for (const p of data.keyPlayers) {
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.setFontSize(9); doc.setTextColor(...BRAND.gray800); doc.text(p.name, 30, y);
+    doc.setTextColor(...BRAND.gray500); doc.text(p.role.slice(0, 40), 90, y);
+    doc.text(p.marketShare, pw - 30, y, { align: "right" }); y += 6;
+  }
+
+  y += 8; if (y > 220) { doc.addPage(); y = 20; }
+  drawSectionLabel(doc, "Opportunities", 24, y, BRAND.emerald); y += 8;
+  for (const o of data.opportunities) {
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFontSize(10); doc.setTextColor(...BRAND.gray800); doc.text(o.opportunity, 30, y);
+    doc.setFontSize(7); doc.setTextColor(...BRAND.emerald);
+    doc.text(`${o.potentialRevenue} · ${o.difficulty}`, pw - 30, y, { align: "right" }); y += 5;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray500);
+    const dLines = doc.splitTextToSize(o.description, maxW - 12); doc.text(dLines, 30, y); y += dLines.length * 4 + 6;
+  }
+
+  y += 4; if (y > 230) { doc.addPage(); y = 20; }
+  drawSectionLabel(doc, "Outlook", 24, y, BRAND.blue); y += 8;
+  doc.setFillColor(239, 246, 255);
+  const olLines = doc.splitTextToSize(data.outlook, maxW - 16);
+  drawRoundedRect(doc, 24, y - 4, maxW, olLines.length * 5 + 12, 4, "F");
+  doc.setFontSize(10); doc.setTextColor(30, 64, 175); doc.text(olLines, 32, y + 4);
+  drawFooter(doc, pw);
+  return doc.output("datauristring");
+}
+
+// ── Market Mapping PDF ──
+export function generateMarketPDF(data: {
+  totalAddressableMarket: { size: string; description: string };
+  serviceableMarket: { size: string; description: string };
+  segments: { name: string; size: string; growth: string; competition: string; ourFit: string; description: string; entryStrategy: string }[];
+  buyerPersonas: { title: string; companySize: string; painPoints: string[]; decisionFactors: string[]; budget: string }[];
+  entryRecommendation: string;
+  prioritySegments: string[];
+}, companyName: string): string {
+  const doc = new jsPDF();
+  const pw = doc.internal.pageSize.getWidth();
+  const maxW = pw - 48;
+  drawHeader(doc, pw, "MARKET MAP", BRAND.emerald);
+  let y = 64;
+  doc.setFontSize(10); doc.setTextColor(...BRAND.gray500);
+  doc.text(`Strategic Market Analysis — ${companyName}`, 24, y); y += 14;
+
+  const halfW = (maxW - 8) / 2;
+  [
+    { label: "TOTAL ADDRESSABLE MARKET", ...data.totalAddressableMarket },
+    { label: "SERVICEABLE MARKET", ...data.serviceableMarket },
+  ].forEach((m, i) => {
+    const cx = 24 + i * (halfW + 8);
+    doc.setFillColor(...BRAND.gray100); drawRoundedRect(doc, cx, y, halfW, 34, 4, "F");
+    doc.setFontSize(7); doc.setTextColor(...BRAND.gray500); doc.text(m.label, cx + 6, y + 10);
+    doc.setFontSize(18); doc.setTextColor(...BRAND.emerald); doc.text(m.size, cx + 6, y + 24);
+  });
+  y += 44;
+
+  drawSectionLabel(doc, "Market Segments", 24, y, BRAND.emerald); y += 8;
+  for (const seg of data.segments) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFontSize(10); doc.setTextColor(...BRAND.gray800);
+    doc.text(`${seg.name} — ${seg.size}`, 30, y);
+    const fitColors: Record<string, readonly [number, number, number]> = { strong: BRAND.emerald, moderate: BRAND.amber, weak: BRAND.rose };
+    doc.setFontSize(7); doc.setTextColor(...(fitColors[seg.ourFit] || BRAND.gray500));
+    doc.text(`${seg.ourFit.toUpperCase()} FIT · ${seg.growth}`, pw - 30, y, { align: "right" }); y += 5;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray500);
+    const dLines = doc.splitTextToSize(seg.description, maxW - 12); doc.text(dLines, 30, y); y += dLines.length * 4 + 3;
+    doc.setTextColor(...BRAND.blue); doc.text(`Strategy: ${seg.entryStrategy.slice(0, 100)}`, 30, y); y += 8;
+  }
+
+  if (y > 200) { doc.addPage(); y = 20; }
+  drawSectionLabel(doc, "Buyer Personas", 24, y, BRAND.indigo); y += 8;
+  for (const bp of data.buyerPersonas) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFontSize(10); doc.setTextColor(...BRAND.gray800); doc.text(bp.title, 30, y);
+    doc.setFontSize(7); doc.setTextColor(...BRAND.emerald);
+    doc.text(bp.budget, pw - 30, y, { align: "right" }); y += 5;
+    doc.setFontSize(8); doc.setTextColor(...BRAND.gray500); doc.text(`Company: ${bp.companySize}`, 30, y); y += 5;
+    doc.setTextColor(...BRAND.gray800);
+    for (const pp of bp.painPoints.slice(0, 3)) { doc.text(`• ${pp.slice(0, 80)}`, 34, y); y += 4; }
+    y += 6;
+  }
+
+  y += 4; if (y > 220) { doc.addPage(); y = 20; }
+  drawSectionLabel(doc, "Entry Recommendation", 24, y, BRAND.emerald); y += 8;
+  doc.setFillColor(236, 253, 245);
+  const recLines = doc.splitTextToSize(data.entryRecommendation, maxW - 16);
+  drawRoundedRect(doc, 24, y - 4, maxW, recLines.length * 5 + 12, 4, "F");
+  doc.setFontSize(10); doc.setTextColor(6, 95, 70); doc.text(recLines, 32, y + 4);
+
+  y += recLines.length * 5 + 20;
+  if (y > 250) { doc.addPage(); y = 20; }
+  doc.setFontSize(8); doc.setTextColor(...BRAND.gray500); doc.text("PRIORITY SEGMENTS: ", 24, y);
+  doc.setTextColor(...BRAND.emerald); doc.text(data.prioritySegments.join(" → "), 70, y);
+  drawFooter(doc, pw);
+  return doc.output("datauristring");
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Mail, Phone, FileText, Headphones, Clock, CheckCircle2, AlertCircle, Loader2, Send, Plus, Sparkles, ShieldCheck, AlertTriangle, RefreshCw, Lock } from "lucide-react";
+import { Search, Mail, Phone, FileText, Headphones, Clock, CheckCircle2, AlertCircle, Loader2, Send, Plus, Sparkles, ShieldCheck, AlertTriangle, RefreshCw, Lock, Download } from "lucide-react";
 import LeadList from "./LeadList";
 import EmailPreview from "./EmailPreview";
 import VoiceCall from "./VoiceCall";
@@ -10,6 +10,7 @@ import SupportChat from "./SupportChat";
 import type { CompanyProfile } from "@/lib/store";
 import type { AgentEvent, AgentRole, AgentStatus, Prospect, EmailDraft, CallRecord, Invoice } from "@/lib/types";
 import type { EmailQAResult } from "@/lib/demo-data";
+import { generateCompetitorPDF, generateIndustryPDF, generateMarketPDF } from "@/lib/pdf";
 
 interface CapAction {
   label: string;
@@ -407,6 +408,14 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
     executeAction("leads", q);
   };
 
+  // # PDF download helper for analysis reports
+  const downloadPDF = (dataUri: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = dataUri;
+    link.download = filename;
+    link.click();
+  };
+
   return (
     <div className="space-y-4">
       {/* loading state */}
@@ -489,8 +498,16 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
       {analysisResult?.action === "competitors" && (
         <div className="space-y-4 animate-fade-in-up">
           <div className="glass-card p-5 border border-rose-500/20">
-            <h3 className="text-lg font-bold text-text-primary mb-1">Competitive Analysis</h3>
-            <p className="text-xs text-text-muted">Based on {profile?.companyName}'s market position</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-text-primary mb-1">Competitive Analysis</h3>
+                <p className="text-xs text-text-muted">Based on {profile?.companyName}&apos;s market position</p>
+              </div>
+              <button onClick={() => downloadPDF(generateCompetitorPDF(analysisResult, profile?.companyName || "Company"), `competitive-analysis-${profile?.companyName || "report"}.pdf`)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer">
+                <Download size={14} /> Export PDF
+              </button>
+            </div>
           </div>
 
           {/* competitor cards */}
@@ -579,7 +596,13 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
         <div className="space-y-4 animate-fade-in-up">
           {/* overview card */}
           <div className="glass-card p-5 border border-cyan-500/20">
-            <h3 className="text-lg font-bold text-text-primary mb-1">{analysisResult.overview?.industryName || "Industry"} Report</h3>
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-lg font-bold text-text-primary mb-1">{analysisResult.overview?.industryName || "Industry"} Report</h3>
+              <button onClick={() => downloadPDF(generateIndustryPDF(analysisResult, profile?.companyName || "Company"), `industry-report-${profile?.companyName || "report"}.pdf`)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-xs font-medium text-cyan-400 hover:bg-cyan-500/20 transition-all cursor-pointer">
+                <Download size={14} /> Export PDF
+              </button>
+            </div>
             <p className="text-xs text-text-secondary leading-relaxed mb-4">{analysisResult.overview?.summary}</p>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-space-800 rounded-lg p-3 text-center">
@@ -680,7 +703,13 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
         <div className="space-y-4 animate-fade-in-up">
           {/* TAM/SAM overview */}
           <div className="glass-card p-5 border border-violet-500/20">
-            <h3 className="text-lg font-bold text-text-primary mb-4">Market Map</h3>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-bold text-text-primary">Market Map</h3>
+              <button onClick={() => downloadPDF(generateMarketPDF(analysisResult, profile?.companyName || "Company"), `market-map-${profile?.companyName || "report"}.pdf`)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-violet-500/10 border border-violet-500/20 rounded-lg text-xs font-medium text-violet-400 hover:bg-violet-500/20 transition-all cursor-pointer">
+                <Download size={14} /> Export PDF
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-space-800 rounded-lg p-4">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Total Addressable Market</p>
