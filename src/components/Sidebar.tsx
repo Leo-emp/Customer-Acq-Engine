@@ -1,7 +1,9 @@
 "use client";
 
-import { Search, Mail, Phone, FileText, Headphones, Zap, BarChart3, Settings, ChevronRight } from "lucide-react";
+import { Search, Mail, Phone, FileText, Headphones, Zap, BarChart3, Settings, ChevronRight, Brain } from "lucide-react";
 import type { AgentEvent, AgentRole, AgentStatus, PipelineStage } from "@/lib/types";
+
+export type ViewMode = AgentRole | "overview" | "brandBrain";
 
 interface AgentNav {
   role: AgentRole;
@@ -42,25 +44,23 @@ const STAGE_ORDER: PipelineStage[] = [
 ];
 
 interface SidebarProps {
-  activeAgent: AgentRole | null;
-  onSelectAgent: (role: AgentRole) => void;
+  activeView: ViewMode;
+  onSelectView: (view: ViewMode) => void;
   events: AgentEvent[];
   currentStage: PipelineStage;
   companyName?: string;
   isRunning: boolean;
-  onShowOverview: () => void;
-  showOverview: boolean;
+  hasProfile: boolean;
 }
 
 export default function Sidebar({
-  activeAgent,
-  onSelectAgent,
+  activeView,
+  onSelectView,
   events,
   currentStage,
   companyName,
   isRunning,
-  onShowOverview,
-  showOverview,
+  hasProfile,
 }: SidebarProps) {
   const getAgentStatus = (role: AgentRole): AgentStatus => {
     const agentEvents = events.filter((e) => e.agent === role);
@@ -131,13 +131,13 @@ export default function Sidebar({
 
       {/* navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <p className="text-[11px] text-text-muted uppercase tracking-wider font-medium px-2 mb-2">Agents</p>
+        {/* main nav */}
+        <p className="text-[11px] text-text-muted uppercase tracking-wider font-medium px-2 mb-2">Main</p>
 
-        {/* overview button */}
         <button
-          onClick={onShowOverview}
+          onClick={() => onSelectView("overview")}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all cursor-pointer ${
-            showOverview
+            activeView === "overview"
               ? "bg-space-700 border border-card-border text-text-primary"
               : "text-text-muted hover:text-text-secondary hover:bg-space-800"
           }`}
@@ -146,17 +146,33 @@ export default function Sidebar({
           <span className="text-sm font-medium">Overview</span>
         </button>
 
+        <button
+          onClick={() => onSelectView("brandBrain")}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all cursor-pointer ${
+            activeView === "brandBrain"
+              ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
+              : "text-text-muted hover:text-text-secondary hover:bg-space-800"
+          }`}
+        >
+          <Brain size={18} />
+          <div className="flex-1 text-left">
+            <span className="text-sm font-medium">Brand Brain</span>
+            {!hasProfile && <p className="text-[10px] text-amber-400">Not configured</p>}
+          </div>
+        </button>
+
         {/* agent list */}
-        <div className="space-y-1 mt-1">
+        <p className="text-[11px] text-text-muted uppercase tracking-wider font-medium px-2 mb-2 mt-4">AI Agents</p>
+        <div className="space-y-1">
           {AGENTS.map((agent) => {
             const status = getAgentStatus(agent.role);
             const count = getAgentEventCount(agent.role);
-            const isActive = activeAgent === agent.role && !showOverview;
+            const isActive = activeView === agent.role;
 
             return (
               <button
                 key={agent.role}
-                onClick={() => onSelectAgent(agent.role)}
+                onClick={() => onSelectView(agent.role)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group ${
                   isActive
                     ? `${agent.bgActive} border`

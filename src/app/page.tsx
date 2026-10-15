@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
+import type { ViewMode } from "@/components/Sidebar";
 import AgentPage from "@/components/AgentPage";
 import OverviewDashboard from "@/components/OverviewDashboard";
+import BrandBrain from "@/components/BrandBrain";
 import SetupModal from "@/components/SetupModal";
 import type { CompanyProfile } from "@/lib/store";
 import type {
@@ -18,7 +20,7 @@ import type {
 
 export default function Home() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
-  const [showSetup, setShowSetup] = useState(true);
+  const [showSetup, setShowSetup] = useState(false);
   const [stage, setStage] = useState<PipelineStage>("idle");
   const [isRunning, setIsRunning] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -32,7 +34,7 @@ export default function Home() {
   const [callProspect, setCallProspect] = useState<Prospect | null>(null);
   const [callScript, setCallScript] = useState("");
   const [callAgentId, setCallAgentId] = useState("");
-  const [activeAgent, setActiveAgent] = useState<AgentRole | null>(null);
+  const [activeView, setActiveView] = useState<ViewMode>("overview");
   const emailsRef = useRef<EmailDraft[]>([]);
 
   const handleSSEEvent = useCallback((data: { type: string; payload: Record<string, unknown> }) => {
@@ -98,7 +100,7 @@ export default function Home() {
     setCallProspect(null);
     setCallScript("");
     setActiveProspectId(undefined);
-    setActiveAgent(null);
+    setActiveView("overview");
 
     const fullPrompt = profile
       ? `Company: ${profile.companyName}\nProduct: ${profile.productDescription}\nValue Prop: ${profile.valueProposition}\nTarget Market: ${profile.targetMarket}\nSender: ${profile.senderName}\n\nGoal: ${userPrompt}`
@@ -149,14 +151,13 @@ export default function Home() {
 
       {/* sidebar — always visible */}
       <Sidebar
-        activeAgent={activeAgent}
-        onSelectAgent={(role) => setActiveAgent(role)}
+        activeView={activeView}
+        onSelectView={setActiveView}
         events={events}
         currentStage={stage}
         companyName={profile?.companyName}
         isRunning={isRunning}
-        onShowOverview={() => setActiveAgent(null)}
-        showOverview={activeAgent === null}
+        hasProfile={!!profile}
       />
 
       {/* main content */}
@@ -166,10 +167,10 @@ export default function Home() {
           <div className="px-6 py-3 flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold text-text-primary">
-                {activeAgent === null ? "Dashboard" : undefined}
+                {activeView === "overview" ? "Dashboard" : activeView === "brandBrain" ? "Brand Brain" : undefined}
               </h1>
               {profile && <p className="text-xs text-text-muted">{profile.companyName} — {profile.valueProposition}</p>}
-              {!profile && <p className="text-xs text-text-muted">Set up your company to get started</p>}
+              {!profile && <p className="text-xs text-text-muted">Set up your Brand Brain to get started</p>}
             </div>
             <div className="flex items-center gap-3">
               {isRunning && (
@@ -179,13 +180,8 @@ export default function Home() {
                 </div>
               )}
               {!profile && (
-                <button onClick={() => setShowSetup(true)} className="px-4 py-1.5 bg-brand-blue hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-all cursor-pointer">
-                  Setup Company
-                </button>
-              )}
-              {profile && (
-                <button onClick={() => setShowSetup(true)} className="text-xs text-text-muted hover:text-text-primary px-3 py-1.5 rounded-lg hover:bg-space-700 transition-all cursor-pointer">
-                  Change Company
+                <button onClick={() => setActiveView("brandBrain")} className="px-4 py-1.5 bg-brand-blue hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-all cursor-pointer">
+                  Setup Brand Brain
                 </button>
               )}
             </div>
@@ -193,7 +189,7 @@ export default function Home() {
         </header>
 
         <main className="p-6">
-          {activeAgent === null ? (
+          {activeView === "overview" && (
             <OverviewDashboard
               profile={profile}
               stage={stage}
@@ -203,11 +199,15 @@ export default function Home() {
               emails={emails}
               callRecord={callRecord}
               onLaunch={handleLaunch}
-              onSelectAgent={(role) => setActiveAgent(role)}
+              onSelectAgent={(role) => setActiveView(role)}
             />
-          ) : (
+          )}
+          {activeView === "brandBrain" && (
+            <BrandBrain profile={profile} onUpdateProfile={(p) => { setProfile(p); }} />
+          )}
+          {activeView !== "overview" && activeView !== "brandBrain" && (
             <AgentPage
-              role={activeAgent}
+              role={activeView}
               events={events}
               prospects={prospects}
               emails={emails}
@@ -219,8 +219,12 @@ export default function Home() {
               callAgentId={callAgentId}
               activeProspectId={activeProspectId}
               productDescription={prompt}
+              profile={profile}
               onSelectProspect={(p) => setActiveProspectId(p.id)}
               onCallComplete={handleCallComplete}
+              onAddProspects={(p) => setProspects(prev => [...prev, ...p])}
+              onAddEmails={(e) => { emailsRef.current = [...emailsRef.current, ...e]; setEmails([...emailsRef.current]); }}
+              onAddEvent={(e) => setEvents(prev => [...prev, e])}
             />
           )}
         </main>
