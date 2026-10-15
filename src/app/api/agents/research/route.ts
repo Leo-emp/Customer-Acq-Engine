@@ -18,12 +18,13 @@ export async function POST(req: NextRequest) {
   const features = profile?.keyFeatures?.join(", ") || "";
 
   try {
-    // # demo mode: return pre-cached responses instantly
+    // # demo mode: return pre-cached responses with realistic 2-3s delay
     if (DEMO_MODE) {
-      if (!action || action === "leads") return Response.json({ action: "leads", prospects: DEMO_PROSPECTS, summary: DEMO_LEAD_SUMMARY });
-      if (action === "competitors") return Response.json({ action: "competitors", ...DEMO_COMPETITORS });
-      if (action === "industry") return Response.json({ action: "industry", ...DEMO_INDUSTRY });
-      if (action === "market") return Response.json({ action: "market", ...DEMO_MARKET });
+      const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      if (!action || action === "leads") { await wait(3000); return Response.json({ action: "leads", prospects: DEMO_PROSPECTS, summary: DEMO_LEAD_SUMMARY }); }
+      if (action === "competitors") { await wait(2500); return Response.json({ action: "competitors", ...DEMO_COMPETITORS }); }
+      if (action === "industry") { await wait(2500); return Response.json({ action: "industry", ...DEMO_INDUSTRY }); }
+      if (action === "market") { await wait(2500); return Response.json({ action: "market", ...DEMO_MARKET }); }
     }
 
     // ── ACTION: Search for leads (Apollo) ──

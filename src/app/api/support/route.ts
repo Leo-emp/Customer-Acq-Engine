@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     // # demo mode: return Salesforce-specific pre-cached responses
     if (DEMO_MODE) {
+      await new Promise((r) => setTimeout(r, 2000));
       const msg = body.message.toLowerCase();
       let reply = "Thanks for reaching out! I'm here to help with anything related to this prospect or our Salesforce CRM solutions. Could you give me a bit more detail about what you're looking for?";
       // # match keywords to cached Salesforce responses

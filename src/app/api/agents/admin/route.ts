@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
         return Response.json({ error: "companyName is required" }, { status: 400 });
       }
 
-      // # demo mode: return pre-cached Salesforce invoice
+      // # demo mode: return pre-cached Salesforce invoice with realistic delay
       if (DEMO_MODE) {
+        await new Promise((r) => setTimeout(r, 2500));
         const items = DEMO_INVOICE.items;
         const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
         const invoice: Invoice = {

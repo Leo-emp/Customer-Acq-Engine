@@ -15,28 +15,35 @@ export async function POST(req: NextRequest) {
   const company = senderCompany || profile?.companyName || "Our Company";
 
   try {
-    // # demo mode: return pre-cached email drafts
+    // # demo mode: return pre-cached email drafts with realistic delays
     if (DEMO_MODE) {
+      const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
       if (action === "draft" && prospect) {
+        await wait(2000);
         const demo = DEMO_EMAILS.find(e => e.prospectId === (prospect as Prospect).id) || DEMO_EMAILS[0];
         return Response.json({ email: { ...demo, body: demo.body.replace("{senderName}", name) } });
       }
       if (action === "draft-all") {
+        await wait(3000);
         const emails = DEMO_EMAILS.map(e => ({ ...e, body: e.body.replace("{senderName}", name) }));
         return Response.json({ emails });
       }
       if (action === "send") {
+        await wait(2000);
         return Response.json({ email: { ...(draft as EmailDraft), sentAt: new Date().toISOString() } });
       }
       if (action === "send-all") {
+        await wait(2500);
         const sent = (draft as EmailDraft[]).map(d => ({ ...d, sentAt: new Date().toISOString() }));
         return Response.json({ sent, sentCount: sent.length, failedCount: 0 });
       }
       if (action === "followup") {
+        await wait(2000);
         return Response.json({ email: { to: (prospect as Prospect).email, subject: `Re: ${(originalEmail as EmailDraft).subject}`, body: `Hi ${(prospect as Prospect).contactName},\n\nI wanted to follow up on my previous note. I understand things get busy in ${(prospect as Prospect).industry}, so I'll keep this brief.\n\nSince we last connected, we published a new case study from a company similar to ${(prospect as Prospect).companyName} — they consolidated 4 disconnected tools into Salesforce and saw a 34% increase in sales productivity within the first quarter.\n\nWould it be worth a 15-minute call to explore whether we could deliver similar results for your team?\n\nBest,\n${name}`, prospectId: (prospect as Prospect).id } });
       }
-      // # Email QA agent — returns pre-cached scan results for all drafted emails
+      // # Email QA agent — returns pre-cached scan results with delay
       if (action === "qa-scan") {
+        await wait(2500);
         return Response.json({ results: DEMO_EMAIL_QA });
       }
     }

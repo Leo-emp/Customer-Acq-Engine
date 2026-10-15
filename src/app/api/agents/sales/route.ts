@@ -22,8 +22,9 @@ export async function POST(req: NextRequest) {
   const brandCtx = buildBrandContext(profile);
 
   try {
-    // # demo mode: return pre-cached Salesforce sales analysis
+    // # demo mode: return pre-cached Salesforce sales analysis with realistic delay
     if (DEMO_MODE) {
+      await new Promise((r) => setTimeout(r, 2500));
       const demoResult = DEMO_SALES_ANALYSIS;
       const callRecord: CallRecord = { prospectId: prospectId || "p1", transcript, duration: 480, outcome: demoResult.outcome, summary: demoResult.summary, nextAction: demoResult.nextAction };
       const pdfDataUrl = generateCallNotePDF(prospectName || "Dr. Rachel Torres", companyName || "MedVista Health Systems", demoResult.outcome, demoResult.summary, demoResult.nextAction, transcript, demoResult.keyInsights);
