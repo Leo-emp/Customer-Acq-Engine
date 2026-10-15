@@ -1,9 +1,9 @@
 "use client";
 
-import { Search, Mail, Phone, FileText, Zap, BarChart3, Settings, ChevronRight, Brain, ShieldCheck } from "lucide-react";
+import { Search, Mail, Phone, FileText, Zap, BarChart3, ChevronRight, Brain, ShieldCheck, UserCircle } from "lucide-react";
 import type { AgentEvent, AgentRole, AgentStatus, PipelineStage } from "@/lib/types";
 
-export type ViewMode = AgentRole | "overview" | "brandBrain";
+export type ViewMode = AgentRole | "overview" | "brandBrain" | "account";
 
 interface AgentNav {
   role: AgentRole;
@@ -210,11 +210,24 @@ export default function Sidebar({
         </div>
       </nav>
 
-      {/* footer */}
+      {/* footer — user account */}
       <div className="px-3 py-3 border-t border-card-border">
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-text-muted hover:text-text-secondary hover:bg-space-800 transition-all cursor-pointer">
-          <Settings size={16} />
-          <span className="text-xs">Settings</span>
+        <button
+          onClick={() => onSelectView("account")}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${
+            activeView === "account"
+              ? "bg-space-700 border border-card-border text-text-primary"
+              : "text-text-muted hover:text-text-secondary hover:bg-space-800"
+          }`}
+        >
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-blue to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
+            AC
+          </div>
+          <div className="flex-1 text-left min-w-0">
+            <span className="text-xs font-medium block truncate">Alex Chen</span>
+            <span className="text-[10px] text-text-muted block truncate">Pro Plan</span>
+          </div>
+          <ChevronRight size={14} className={`flex-shrink-0 ${activeView === "account" ? "text-text-secondary" : "text-transparent"}`} />
         </button>
       </div>
     </aside>

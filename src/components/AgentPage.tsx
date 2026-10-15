@@ -11,6 +11,7 @@ import type { CompanyProfile } from "@/lib/store";
 import type { AgentEvent, AgentRole, AgentStatus, Prospect, EmailDraft, CallRecord, Invoice } from "@/lib/types";
 import { DEMO_MODE, DEMO_SENT_EMAILS, DEMO_FOLLOWUP_EMAILS, DEMO_FOLLOWUP_QA } from "@/lib/demo-data";
 import type { EmailQAResult } from "@/lib/demo-data";
+import { DEMO_PIPELINE_QA } from "@/lib/demo-pipeline";
 import { generateCompetitorPDF, generateIndustryPDF, generateMarketPDF } from "@/lib/pdf";
 
 interface CapAction {
@@ -331,6 +332,28 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             {agentEvents.map((event, i) => {
               // # when agent is done, show all events as green (Complete)
               const dotStatus = latestStatus === "done" ? "done" : event.status;
+              // # convert in-progress messages to past tense when agent is complete
+              let displayMessage = event.message;
+              if (latestStatus === "done" && event.status !== "done" && event.status !== "error") {
+                displayMessage = displayMessage
+                  .replace(/\bAnalyzing\b/g, "Analyzed")
+                  .replace(/\bSearching\b/g, "Searched")
+                  .replace(/\bScanning\b/g, "Scanned")
+                  .replace(/\bDrafting\b/g, "Drafted")
+                  .replace(/\bGenerating\b/g, "Generated")
+                  .replace(/\bCrafting\b/g, "Crafted")
+                  .replace(/\bInitiating\b/g, "Initiated")
+                  .replace(/\bMapping\b/g, "Mapped")
+                  .replace(/\bResearching\b/g, "Researched")
+                  .replace(/\bBuilding\b/g, "Built")
+                  .replace(/\bWriting\b/g, "Wrote")
+                  .replace(/\bSending\b/g, "Sent")
+                  .replace(/\bProcessing\b/g, "Processed")
+                  .replace(/\bConnecting\b/g, "Connected")
+                  .replace(/\bReviewing\b/g, "Reviewed")
+                  .replace(/\bInitializing\b/g, "Initialized")
+                  .replace(/\.\.\.$/, "");
+              }
               return (
               <div key={i} className="flex items-start gap-3 text-sm">
                 <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
@@ -341,7 +364,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
                   : "bg-space-500"
                 }`} />
                 <div className="flex-1 min-w-0">
-                  <span className="text-text-secondary">{event.message}</span>
+                  <span className="text-text-secondary">{displayMessage}</span>
                 </div>
                 <span className="text-xs text-text-muted flex-shrink-0">
                   {new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
@@ -1166,19 +1189,33 @@ function OutreachTool({ prospects, emails, onAddEmails, onAddEvent, profile }: {
 
 // ── EMAIL QA AGENT PANEL ──
 // # 2 tabs: Scan Cold Emails + Scan Follow-Ups
+// # when pipeline has already run, QA results are auto-populated from DEMO_PIPELINE_QA
 function EmailQAPanel({ emails, onAddEvent }: {
   emails: EmailDraft[];
   onAddEvent: (event: AgentEvent) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"scan-cold" | "scan-followups">("scan-cold");
-  const [coldQaResults, setColdQaResults] = useState<EmailQAResult[]>([]);
+  // # auto-populate QA results if pipeline already ran (emails exist in demo mode)
+  const [coldQaResults, setColdQaResults] = useState<EmailQAResult[]>(() => {
+    if (DEMO_MODE && emails.length > 0) return DEMO_PIPELINE_QA;
+    return [];
+  });
   const [followupQaResults, setFollowupQaResults] = useState<EmailQAResult[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-  const [coldScanComplete, setColdScanComplete] = useState(false);
+  // # auto-mark scan complete if pipeline already provided QA results
+  const [coldScanComplete, setColdScanComplete] = useState(() => DEMO_MODE && emails.length > 0);
   const [followupScanComplete, setFollowupScanComplete] = useState(false);
   // # follow-up emails come from demo data directly (Reach drafts them locally)
   const followupEmails = DEMO_MODE ? (DEMO_FOLLOWUP_EMAILS as EmailDraft[]) : [];
+
+  // # if emails arrive after mount (pipeline finishes), auto-populate QA results
+  useEffect(() => {
+    if (DEMO_MODE && emails.length > 0 && coldQaResults.length === 0) {
+      setColdQaResults(DEMO_PIPELINE_QA);
+      setColdScanComplete(true);
+    }
+  }, [emails.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // # verdict styling map
   const verdictConfig: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
@@ -1325,9 +1362,11 @@ function EmailQAPanel({ emails, onAddEvent }: {
                           <p className="text-xs text-text-muted">To: <span className="text-text-primary">{email.to}</span></p>
                           <p className="text-xs text-text-muted mt-0.5">Subject: <span className="text-text-primary font-medium">{email.subject}</span></p>
                         </div>
-                        {/* show QA verdict badge if scan complete */}
-                        {coldScanComplete && coldQaResults[i] && (() => {
-                          const cfg = verdictConfig[coldQaResults[i].verdict] || verdictConfig.approved;
+                        {/* show QA verdict badge — match by email address */}
+                        {coldScanComplete && (() => {
+                          const qaResult = coldQaResults.find(q => q.to === email.to) || coldQaResults[i];
+                          if (!qaResult) return null;
+                          const cfg = verdictConfig[qaResult.verdict] || verdictConfig.approved;
                           return (
                             <span className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
                               {cfg.icon} {cfg.label}
@@ -1344,22 +1383,26 @@ function EmailQAPanel({ emails, onAddEvent }: {
                     <div className="px-4 py-3">
                       <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
                     </div>
-                    {/* show QA feedback inline if scan complete */}
-                    {coldScanComplete && coldQaResults[i] && (
-                      <div className="px-4 py-3 border-t border-card-border bg-space-800/50">
-                        <p className="text-xs text-text-secondary leading-relaxed">{coldQaResults[i].reason}</p>
-                        {coldQaResults[i].suggestions && coldQaResults[i].suggestions!.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
-                            {coldQaResults[i].suggestions!.map((s, j) => (
-                              <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
-                                <span className="mt-0.5">&bull;</span><span>{s}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* show QA feedback inline — match by email address */}
+                    {coldScanComplete && (() => {
+                      const qaResult = coldQaResults.find(q => q.to === email.to) || coldQaResults[i];
+                      if (!qaResult) return null;
+                      return (
+                        <div className="px-4 py-3 border-t border-card-border bg-space-800/50">
+                          <p className="text-xs text-text-secondary leading-relaxed">{qaResult.reason}</p>
+                          {qaResult.suggestions && qaResult.suggestions.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
+                              {qaResult.suggestions.map((s, j) => (
+                                <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
+                                  <span className="mt-0.5">&bull;</span><span>{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
