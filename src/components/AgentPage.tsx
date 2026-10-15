@@ -142,76 +142,114 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
 
   return (
     <div className="space-y-6">
-      {/* agent header card */}
-      <div className={`glass-card p-6 ${meta.borderColor} border`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-white shadow-lg shadow-black/20`}>
-              {meta.icon}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary">{meta.name}</h1>
-              <p className="text-sm text-text-muted">{meta.title}</p>
-            </div>
-          </div>
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${statusCfg.bg}`}>
-            <span className={statusCfg.color}>{statusCfg.icon}</span>
-            <span className={`text-xs font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
-          </div>
-        </div>
-        <p className="text-sm text-text-secondary mt-4 max-w-2xl leading-relaxed">{meta.description}</p>
-      </div>
-
-      {/* quick actions + stats row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 glass-card p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Quick Actions</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {meta.capabilities.map((cap, i) => (
-              <button key={i} onClick={() => handleQuickAction(cap.prompt || cap.action || cap.label)}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all cursor-pointer text-left group ${
-                  quickAction === (cap.prompt || cap.action || cap.label)
-                    ? `${meta.borderColor} bg-space-700`
-                    : "border-card-border bg-space-800 hover:bg-space-700 hover:border-space-500"
-                }`}>
-                <Sparkles size={12} className={`${meta.color} flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity`} />
-                <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">{cap.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Stats</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted">Total Actions</span>
-              <span className="text-sm font-bold text-text-primary">{agentEvents.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted">Status</span>
-              <span className={`text-sm font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
-            </div>
-            {role === "research" && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted">Leads Found</span>
-                <span className="text-sm font-bold text-blue-400">{prospects.length}</span>
+      {/* agent header — sales agent gets compact header + inline stats */}
+      {role === "sales" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className={`lg:col-span-2 glass-card p-6 ${meta.borderColor} border`}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-white shadow-lg shadow-black/20`}>
+                  {meta.icon}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-text-primary">{meta.name}</h1>
+                  <p className="text-sm text-text-muted">{meta.title}</p>
+                </div>
               </div>
-            )}
-            {role === "outreach" && (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">Emails Drafted</span>
-                  <span className="text-sm font-bold text-amber-400">{emails.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">Emails Sent</span>
-                  <span className="text-sm font-bold text-amber-400">{emails.filter(e => e.sentAt).length}</span>
-                </div>
-              </>
-            )}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${statusCfg.bg}`}>
+                <span className={statusCfg.color}>{statusCfg.icon}</span>
+                <span className={`text-xs font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
+              </div>
+            </div>
+            <p className="text-sm text-text-secondary mt-4 leading-relaxed">{meta.description}</p>
+          </div>
+          <div className="glass-card p-5 flex flex-col justify-center">
+            <h3 className="text-sm font-semibold text-text-primary mb-3">Stats</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">Total Actions</span>
+                <span className="text-sm font-bold text-text-primary">{agentEvents.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">Status</span>
+                <span className={`text-sm font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className={`glass-card p-6 ${meta.borderColor} border`}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-white shadow-lg shadow-black/20`}>
+                  {meta.icon}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-text-primary">{meta.name}</h1>
+                  <p className="text-sm text-text-muted">{meta.title}</p>
+                </div>
+              </div>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${statusCfg.bg}`}>
+                <span className={statusCfg.color}>{statusCfg.icon}</span>
+                <span className={`text-xs font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
+              </div>
+            </div>
+            <p className="text-sm text-text-secondary mt-4 max-w-2xl leading-relaxed">{meta.description}</p>
+          </div>
+
+          {/* quick actions + stats row (not shown for sales) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 glass-card p-5">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Quick Actions</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {meta.capabilities.map((cap, i) => (
+                  <button key={i} onClick={() => handleQuickAction(cap.prompt || cap.action || cap.label)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all cursor-pointer text-left group ${
+                      quickAction === (cap.prompt || cap.action || cap.label)
+                        ? `${meta.borderColor} bg-space-700`
+                        : "border-card-border bg-space-800 hover:bg-space-700 hover:border-space-500"
+                    }`}>
+                    <Sparkles size={12} className={`${meta.color} flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity`} />
+                    <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">{cap.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Stats</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Total Actions</span>
+                  <span className="text-sm font-bold text-text-primary">{agentEvents.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Status</span>
+                  <span className={`text-sm font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
+                </div>
+                {role === "research" && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">Leads Found</span>
+                    <span className="text-sm font-bold text-blue-400">{prospects.length}</span>
+                  </div>
+                )}
+                {role === "outreach" && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text-muted">Emails Drafted</span>
+                      <span className="text-sm font-bold text-amber-400">{emails.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text-muted">Emails Sent</span>
+                      <span className="text-sm font-bold text-amber-400">{emails.filter(e => e.sentAt).length}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* STANDALONE TOOLS — each agent works independently */}
       <div>
