@@ -7,7 +7,7 @@ let _model: GenerativeModel | null = null;
 function getModel(): GenerativeModel {
   if (!_model) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-    _model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    _model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
   }
   return _model;
 }
