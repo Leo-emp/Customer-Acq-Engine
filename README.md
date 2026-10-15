@@ -145,17 +145,33 @@ src/
 
 ---
 
-## Demo Mode
+## Two Modes: Demo & Live
 
-The app ships with `DEMO_MODE = true` for demonstration. No API keys needed:
+AcquireAI runs in two modes. Both use the exact same UI, pipeline, and agent architecture — the only difference is where the data comes from.
 
-- Brand Brain pre-configured with Salesforce intelligence
+### Demo Mode (current default)
+
+`DEMO_MODE = true` in `src/lib/demo-data.ts`. No API keys required. Every agent returns cached, pre-built responses so judges and reviewers can experience the full pipeline end-to-end without external dependencies:
+
+- Brand Brain pre-configured with Salesforce company intelligence
 - 30 realistic leads across healthcare, finance, manufacturing, retail, tech
-- 30 personalized cold emails (one per lead)
-- 30 QA scan results (24 approved, 6 flagged with specific suggestions)
+- 30 personalized cold emails (one per lead, each referencing specific pain points)
+- 30 QA scan results (24 approved, 6 flagged with specific improvement suggestions)
 - Full 4m42s AI sales call transcript (Alex Chen + Dr. Rachel Torres)
 - Deal analysis with 6 key insights and $250-400K budget confirmation
-- Invoice for $233,200 (Sales Cloud + Service Cloud + Einstein AI + implementation)
+- Invoice for $233,200 with 6 itemized line items (Sales Cloud + Service Cloud + Einstein AI + implementation + migration + training)
+
+### Live Mode
+
+Set `DEMO_MODE = false` and provide API keys. Every agent calls real external services:
+
+- **Scout**: Queries Apollo.io for verified B2B contacts, Gemini AI scores and qualifies each lead
+- **Reach**: Gemini generates unique personalized emails per prospect, sends via Gmail API or Resend
+- **QA**: Gemini analyzes each email for personalization quality, tone, and compliance
+- **Closer**: Twilio makes real outbound AI voice calls, Gemini analyzes transcripts
+- **Invoice**: Gemini generates line items from deal context, jsPDF creates downloadable PDFs
+
+The architecture is identical — demo mode simply swaps API calls for cached data so the product works offline.
 
 ---
 
