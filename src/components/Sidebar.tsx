@@ -64,8 +64,12 @@ export default function Sidebar({
   hasProfile,
 }: SidebarProps) {
   const getAgentStatus = (role: AgentRole): AgentStatus => {
+    // # only show "done" (Complete) when the pipeline is running or just finished
+    // # individual button clicks should not mark the sidebar as Complete
     const agentEvents = events.filter((e) => e.agent === role);
-    return (agentEvents[agentEvents.length - 1]?.status || "idle") as AgentStatus;
+    const lastStatus = (agentEvents[agentEvents.length - 1]?.status || "idle") as AgentStatus;
+    if (lastStatus === "done" && !isRunning && currentStage === "idle") return "idle";
+    return lastStatus;
   };
 
   const getAgentEventCount = (role: AgentRole): number => {

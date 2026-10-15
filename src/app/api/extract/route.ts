@@ -66,8 +66,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // # demo mode: return pre-cached profile instantly
+    // # demo mode: return pre-cached Salesforce profile with realistic 2s delay
     if (DEMO_MODE) {
+      await new Promise((r) => setTimeout(r, 2000));
       return Response.json({ profile: DEMO_BRAND_PROFILE, url: url.trim() });
     }
 

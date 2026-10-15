@@ -161,7 +161,7 @@ export default function Home() {
       />
 
       {/* main content */}
-      <div className="flex-1 ml-64 min-h-screen">
+      <div className="flex-1 ml-64 min-h-screen overflow-x-hidden">
         {/* top bar */}
         <header className="sticky top-0 z-30 bg-space-900/95 backdrop-blur-sm border-b border-card-border">
           <div className="px-6 py-3 flex items-center justify-between">

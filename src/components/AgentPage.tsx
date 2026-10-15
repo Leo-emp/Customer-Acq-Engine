@@ -455,8 +455,8 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
         </form>
       )}
 
-      {/* lead summary card */}
-      {leadSummary && prospects.length > 0 && (
+      {/* lead summary card — only show when viewing leads, not other analyses */}
+      {leadSummary && prospects.length > 0 && (!analysisResult || activeAction === "leads") && (
         <div className="glass-card p-4 border border-blue-500/20">
           <h4 className="text-sm font-semibold text-text-primary mb-3">Search Results Summary</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -487,8 +487,8 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
         </div>
       )}
 
-      {/* lead table */}
-      {prospects.length > 0 && <LeadList prospects={prospects} activeProspectId={activeProspectId} onSelect={onSelectProspect} />}
+      {/* lead table — only show when viewing leads, not competitor/industry/market */}
+      {prospects.length > 0 && (!analysisResult || activeAction === "leads") && <LeadList prospects={prospects} activeProspectId={activeProspectId} onSelect={onSelectProspect} />}
 
       {/* ── COMPETITOR ANALYSIS OUTPUT ── */}
       {analysisResult?.action === "competitors" && (

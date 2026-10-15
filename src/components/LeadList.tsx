@@ -50,24 +50,22 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="border-b border-card-border text-text-muted text-[11px] uppercase tracking-wider">
-              <th className="text-left px-4 py-2.5 font-medium">Score</th>
-              <th className="text-left px-4 py-2.5 font-medium">Contact</th>
-              <th className="text-left px-4 py-2.5 font-medium">Company</th>
-              <th className="text-left px-4 py-2.5 font-medium">Email</th>
-              <th className="text-left px-4 py-2.5 font-medium">Industry</th>
-              <th className="text-left px-4 py-2.5 font-medium">Location</th>
-              <th className="text-left px-4 py-2.5 font-medium">Size</th>
-              <th className="text-left px-4 py-2.5 font-medium">Fit Reason</th>
-              <th className="text-left px-4 py-2.5 font-medium">Links</th>
-              <th className="text-left px-4 py-2.5 font-medium">Status</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[70px]">Score</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[18%]">Contact</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[16%]">Company</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[18%]">Email</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[11%]">Industry</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[10%]">Location</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[60px]">Size</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[15%]">Fit Reason</th>
+              <th className="text-left px-3 py-2.5 font-medium w-[50px]">Links</th>
             </tr>
           </thead>
           <tbody>
             {prospects.map((prospect) => {
-              const badge = STATUS_BADGES[prospect.status] || STATUS_BADGES.new;
               const isActive = prospect.id === activeProspectId;
 
               return (
@@ -80,30 +78,30 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   `}
                 >
                   {/* score */}
-                  <td className="px-4 py-3"><ScoreBar score={prospect.score} /></td>
+                  <td className="px-3 py-3"><ScoreBar score={prospect.score} /></td>
 
                   {/* contact: name + title */}
-                  <td className="px-4 py-3 min-w-[160px]">
-                    <span className="font-medium text-text-primary block">{prospect.contactName}</span>
+                  <td className="px-3 py-3">
+                    <span className="font-medium text-text-primary block truncate">{prospect.contactName}</span>
                     {prospect.title && (
-                      <span className="text-[11px] text-text-muted block truncate max-w-[160px]">{prospect.title}</span>
+                      <span className="text-[11px] text-text-muted block truncate">{prospect.title}</span>
                     )}
                   </td>
 
                   {/* company */}
-                  <td className="px-4 py-3 min-w-[140px]">
-                    <span className="font-medium text-text-primary">{prospect.companyName}</span>
+                  <td className="px-3 py-3">
+                    <span className="font-medium text-text-primary truncate block">{prospect.companyName}</span>
                   </td>
 
                   {/* email + verification */}
-                  <td className="px-4 py-3 min-w-[200px]">
+                  <td className="px-3 py-3">
                     {prospect.email ? (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-text-secondary truncate max-w-[170px]">{prospect.email}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-text-secondary truncate">{prospect.email}</span>
                         {prospect.emailVerified ? (
-                          <span className="flex-shrink-0"><ShieldCheck size={12} className="text-emerald-400" /></span>
+                          <span className="flex-shrink-0"><ShieldCheck size={11} className="text-emerald-400" /></span>
                         ) : (
-                          <span className="flex-shrink-0"><ShieldAlert size={12} className="text-amber-400" /></span>
+                          <span className="flex-shrink-0"><ShieldAlert size={11} className="text-amber-400" /></span>
                         )}
                       </div>
                     ) : (
@@ -112,16 +110,16 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   </td>
 
                   {/* industry */}
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-text-muted">{prospect.industry}</span>
+                  <td className="px-3 py-3">
+                    <span className="text-xs text-text-muted truncate block">{prospect.industry}</span>
                   </td>
 
                   {/* location */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     {prospect.location ? (
                       <div className="flex items-center gap-1 text-xs text-text-muted">
                         <MapPin size={10} className="flex-shrink-0" />
-                        <span className="truncate max-w-[120px]">{prospect.location}</span>
+                        <span className="truncate">{prospect.location}</span>
                       </div>
                     ) : (
                       <span className="text-xs text-text-muted">—</span>
@@ -129,7 +127,7 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   </td>
 
                   {/* employee count */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     {prospect.employeeCount ? (
                       <div className="flex items-center gap-1 text-xs text-text-muted">
                         <Users size={10} className="flex-shrink-0" />
@@ -141,34 +139,26 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   </td>
 
                   {/* fit reason */}
-                  <td className="px-4 py-3 max-w-[220px]">
+                  <td className="px-3 py-3">
                     <span className="text-xs text-text-muted line-clamp-2">{prospect.fitReason}</span>
                   </td>
 
                   {/* links: website + linkedin */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-1.5">
                       {prospect.website && (
                         <a href={prospect.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                           className="text-text-muted hover:text-brand-glow transition-colors">
-                          <ExternalLink size={14} />
+                          <ExternalLink size={13} />
                         </a>
                       )}
                       {prospect.linkedinUrl && (
                         <a href={prospect.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                           className="text-text-muted hover:text-blue-400 transition-colors">
-                          <Link2 size={14} />
+                          <Link2 size={13} />
                         </a>
                       )}
-                      {!prospect.website && !prospect.linkedinUrl && (
-                        <span className="text-xs text-text-muted">—</span>
-                      )}
                     </div>
-                  </td>
-
-                  {/* status */}
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.color}`}>{badge.label}</span>
                   </td>
                 </tr>
               );

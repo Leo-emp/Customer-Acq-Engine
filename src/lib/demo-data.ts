@@ -9,23 +9,63 @@ export const DEMO_MODE = true;
 // ══════════════════════════════════════════════════════════
 
 export const DEMO_BRAND_PROFILE = {
+  // # core identity
   companyName: "Salesforce",
-  productDescription: "The world's #1 AI-powered CRM platform. Salesforce unifies sales, service, marketing, commerce, and IT on a single platform powered by Einstein AI — giving every company a complete view of their customers and the tools to grow revenue, reduce costs, and increase productivity.",
-  valueProposition: "Replace disconnected tools and manual processes with one AI-powered platform that gives your entire team a 360-degree view of every customer — increasing sales productivity by 29% and revenue by 37% on average.",
-  targetMarket: "Enterprise and mid-market B2B companies (200-10,000+ employees) across financial services, healthcare, manufacturing, retail, and technology sectors looking to modernize their CRM and customer engagement stack",
-  industry: "Enterprise SaaS / Cloud Computing / CRM",
+  productDescription: "The world's #1 AI-powered CRM platform. Salesforce unifies sales, service, marketing, commerce, and IT on a single platform powered by Einstein AI and Agentforce — giving every company a complete view of their customers and the tools to grow revenue, reduce costs, and increase productivity. Founded in 1999 by Marc Benioff, Salesforce pioneered cloud-based CRM and now serves 150,000+ businesses globally with $34.9B annual revenue (FY2024).",
+  valueProposition: "Replace disconnected tools and manual processes with one AI-powered platform that gives your entire team a 360-degree view of every customer — increasing sales productivity by 29%, revenue by 37%, and customer satisfaction by 45% on average, while cutting IT costs by 25% through platform consolidation.",
+  targetMarket: "Enterprise and mid-market B2B companies (200-10,000+ employees) across financial services, healthcare, manufacturing, retail, technology, government, and education sectors — plus growing SMB segment via Starter Suite. Primary buyers: CROs, CMOs, CIOs, and VP-level leaders evaluating CRM modernization, digital transformation, or AI adoption.",
+  industry: "Enterprise SaaS / Cloud Computing / CRM / AI Platform",
+  tone: "Confident, innovative, enterprise-grade but approachable — data-driven claims backed by customer success stories, ROI metrics, and Trailblazer community proof. Heavy use of aspirational language ('pioneer', 'transform', 'revolutionize') paired with hard numbers.",
+
+  // # products & features — comprehensive
   keyFeatures: [
-    "Sales Cloud — AI-powered pipeline management and forecasting",
-    "Service Cloud — Omnichannel customer support with Einstein AI",
-    "Marketing Cloud — Personalized customer journeys at scale",
-    "Data Cloud — Real-time customer data unification",
-    "Einstein AI — Predictive analytics, generative AI, and copilot across all clouds",
-    "AppExchange — 7,000+ pre-built integrations and apps",
-    "Slack Integration — Team collaboration embedded in CRM workflows",
-    "Industry Clouds — Pre-built solutions for 15+ verticals",
+    "Sales Cloud — AI-powered pipeline management, forecasting, CPQ, territory planning, and revenue intelligence",
+    "Service Cloud — Omnichannel support (phone, email, chat, social, self-service) with Einstein AI case routing",
+    "Marketing Cloud — Personalized customer journeys, email automation, social studio, advertising, and CDP",
+    "Commerce Cloud — B2B and B2C storefronts, order management, headless commerce APIs",
+    "Data Cloud — Real-time customer data unification, identity resolution, and activation across all touchpoints",
+    "Einstein AI — Predictive analytics, generative AI, conversational intelligence, and AI copilot across all clouds",
+    "Agentforce — Autonomous AI agents that handle sales, service, marketing, and commerce tasks 24/7",
+    "Platform (Lightning) — Low-code app builder, Flow automation, Apex development, Heroku runtime",
+    "Slack — Team collaboration, workflows, and Huddles integrated into every Salesforce workflow",
+    "MuleSoft — API integration platform connecting any system, app, or data source to Salesforce",
+    "Tableau — Visual analytics, business intelligence dashboards, and AI-powered data stories",
+    "AppExchange — 7,000+ pre-built integrations and apps from ISV partners",
+    "Industry Clouds — Pre-built solutions for 15+ verticals (Health Cloud, Financial Services Cloud, Manufacturing Cloud, etc.)",
+    "Shield — Enterprise-grade security, encryption, event monitoring, and compliance (HIPAA, GDPR, SOC2)",
+    "Success Plans — Premier, Signature, and Professional Services for implementation and ongoing optimization",
   ],
-  pricing: "Starter Suite: $25/user/mo | Professional: $80/user/mo | Enterprise: $165/user/mo | Unlimited: $330/user/mo | Einstein 1: $500/user/mo",
-  tone: "Confident, innovative, enterprise-grade but approachable — data-driven claims backed by customer success stories and ROI metrics",
+  pricing: "Starter Suite: $25/user/mo | Professional: $80/user/mo | Enterprise: $165/user/mo | Unlimited: $330/user/mo | Einstein 1: $500/user/mo — All billed annually. Add-ons: Sales Engagement ($50/user), Einstein Activity Capture ($50/user), Revenue Intelligence ($75/user), CPQ ($75/user). Volume discounts at 100+ seats.",
+
+  // # extended brand intelligence
+  founded: "1999",
+  headquarters: "San Francisco, CA (Salesforce Tower)",
+  ceo: "Marc Benioff (Chairman & CEO)",
+  employees: "~72,000 globally",
+  revenue: "$34.9B (FY2024), 11% YoY growth",
+  customers: "150,000+ businesses worldwide including 90% of Fortune 500",
+  marketCap: "~$280B (as of 2024)",
+  stockTicker: "NYSE: CRM (Dow Jones Industrial Average component)",
+  competitors: "Microsoft Dynamics 365, HubSpot, Oracle CX, SAP CX, Zoho CRM, Freshworks, Pipedrive",
+  marketPosition: "Undisputed global CRM market leader with ~23% market share — more than the next 4 competitors combined. #1 in Gartner Magic Quadrant for SFA, CRM Customer Engagement, and B2B Marketing Automation.",
+  differentiators: [
+    "Largest CRM ecosystem — AppExchange, Trailblazer community (15M+ members), and 2,000+ ISV partners",
+    "Agentforce — first-to-market autonomous AI agents for enterprise CRM",
+    "Multi-cloud platform — only vendor offering sales, service, marketing, commerce, and analytics unified",
+    "Trust & compliance — most enterprise certifications (FedRAMP, HIPAA, SOC2, ISO 27001, PCI DSS)",
+    "Hyperforce — public cloud infrastructure on AWS, Azure, and GCP for data residency requirements",
+  ],
+  idealCustomer: "Companies with 200-10,000+ employees ($50M-$50B+ revenue), mid-to-high tech maturity, buying triggers include CRM contract renewal, digital transformation initiative, AI/automation mandate, or new CRO/CIO hire.",
+  painPoints: [
+    "Disconnected sales, service, and marketing data across multiple tools",
+    "No single source of truth for customer interactions and pipeline",
+    "Manual processes slowing down deal cycles and response times",
+    "Inability to leverage AI/ML on customer data for predictions",
+    "Compliance and data sovereignty concerns with current stack",
+    "Scaling customer operations without proportionally scaling headcount",
+  ],
+  website: "salesforce.com",
+  annualEvents: "Dreamforce (180,000+ attendees), TrailblazerDX (developer conference), World Tour (20+ global cities)",
 };
 
 // ══════════════════════════════════════════════════════════

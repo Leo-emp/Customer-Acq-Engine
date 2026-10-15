@@ -14,4 +14,20 @@ export interface CompanyProfile {
   pricing: string;
   tone: string;
   websiteUrl?: string;
+  // # extended brand intelligence (populated in demo mode)
+  founded?: string;
+  headquarters?: string;
+  ceo?: string;
+  employees?: string;
+  revenue?: string;
+  customers?: string;
+  marketCap?: string;
+  stockTicker?: string;
+  competitors?: string;
+  marketPosition?: string;
+  differentiators?: string[];
+  idealCustomer?: string;
+  painPoints?: string[];
+  website?: string;
+  annualEvents?: string;
 }

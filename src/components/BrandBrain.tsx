@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Globe, Loader2, Sparkles, Check, Building2, Package, Target, Zap, Tag, MessageSquare, RefreshCw, Brain, ChevronDown } from "lucide-react";
+import { Globe, Loader2, Sparkles, Check, Building2, Package, Target, Zap, Tag, MessageSquare, RefreshCw, Brain, ChevronDown, Users, DollarSign, Trophy, Shield, Calendar, MapPin, User, BarChart3, Crosshair, AlertTriangle } from "lucide-react";
 import type { CompanyProfile } from "@/lib/store";
+import { DEMO_MODE } from "@/lib/demo-data";
 
 interface ExtractedProfile {
   companyName: string;
@@ -13,6 +14,22 @@ interface ExtractedProfile {
   keyFeatures: string[];
   pricing: string;
   tone: string;
+  // # extended fields from demo extraction
+  founded?: string;
+  headquarters?: string;
+  ceo?: string;
+  employees?: string;
+  revenue?: string;
+  customers?: string;
+  marketCap?: string;
+  stockTicker?: string;
+  competitors?: string;
+  marketPosition?: string;
+  differentiators?: string[];
+  idealCustomer?: string;
+  painPoints?: string[];
+  website?: string;
+  annualEvents?: string;
 }
 
 interface BrandBrainProps {
@@ -66,6 +83,42 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to extract"); return; }
       setExtracted(data.profile);
+
+      // # demo mode: auto-activate with default sender name — no manual step needed
+      if (DEMO_MODE) {
+        const autoProfile: CompanyProfile = {
+          companyName: data.profile.companyName,
+          productDescription: data.profile.productDescription,
+          targetMarket: data.profile.targetMarket,
+          senderName: "Alex Chen",
+          senderEmail: "",
+          valueProposition: data.profile.valueProposition,
+          calendlyUrl: "",
+          industry: data.profile.industry,
+          keyFeatures: data.profile.keyFeatures,
+          pricing: data.profile.pricing,
+          tone: data.profile.tone,
+          websiteUrl: url.trim(),
+          founded: data.profile.founded,
+          headquarters: data.profile.headquarters,
+          ceo: data.profile.ceo,
+          employees: data.profile.employees,
+          revenue: data.profile.revenue,
+          customers: data.profile.customers,
+          marketCap: data.profile.marketCap,
+          stockTicker: data.profile.stockTicker,
+          competitors: data.profile.competitors,
+          marketPosition: data.profile.marketPosition,
+          differentiators: data.profile.differentiators,
+          idealCustomer: data.profile.idealCustomer,
+          painPoints: data.profile.painPoints,
+          website: data.profile.website,
+          annualEvents: data.profile.annualEvents,
+        };
+        setSenderName("Alex Chen");
+        onUpdateProfile(autoProfile);
+        setConfirmed(true);
+      }
     } catch {
       setError("Failed to connect. Check the URL and try again.");
     } finally {
@@ -259,7 +312,7 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
         </div>
       )}
 
-      {/* active profile display */}
+      {/* active profile display — shows ALL extracted intelligence permanently */}
       {profile && confirmed && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -274,27 +327,139 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
             </button>
           </div>
 
+          {/* core identity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <ProfileCard icon={<Building2 size={16} />} label="Company" value={profile.companyName} color="text-blue-400" />
-            <ProfileCard icon={<Target size={16} />} label="Target Market" value={profile.targetMarket} color="text-rose-400" />
-            <ProfileCard icon={<Package size={16} />} label="Product" value={profile.productDescription} color="text-amber-400" span />
+            <ProfileCard icon={<Tag size={16} />} label="Industry" value={profile.industry} color="text-purple-400" />
+            <ProfileCard icon={<Package size={16} />} label="Product & Services" value={profile.productDescription} color="text-amber-400" span />
             <ProfileCard icon={<Zap size={16} />} label="Value Proposition" value={profile.valueProposition} color="text-emerald-400" span />
+            <ProfileCard icon={<Target size={16} />} label="Target Market" value={profile.targetMarket} color="text-rose-400" span />
+            <ProfileCard icon={<MessageSquare size={16} />} label="Brand Tone" value={profile.tone} color="text-teal-400" span />
+            <ProfileCard icon={<DollarSign size={16} />} label="Pricing" value={profile.pricing} color="text-indigo-400" span />
           </div>
 
+          {/* key features / products */}
+          {profile.keyFeatures?.length > 0 && (
+            <div className="glass-card p-4">
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5"><Sparkles size={12} className="text-amber-400" /> Products & Key Features</p>
+              <div className="space-y-2">
+                {profile.keyFeatures.map((f, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                    <span className="text-brand-glow mt-0.5 flex-shrink-0">&#8226;</span>
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* company details — extended intelligence */}
+          {(profile.founded || profile.headquarters || profile.ceo || profile.employees) && (
+            <div className="glass-card p-4">
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5"><Building2 size={12} className="text-blue-400" /> Company Details</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {profile.founded && <DetailItem label="Founded" value={profile.founded} />}
+                {profile.headquarters && <DetailItem label="Headquarters" value={profile.headquarters} />}
+                {profile.ceo && <DetailItem label="CEO" value={profile.ceo} />}
+                {profile.employees && <DetailItem label="Employees" value={profile.employees} />}
+                {profile.revenue && <DetailItem label="Revenue" value={profile.revenue} />}
+                {profile.customers && <DetailItem label="Customers" value={profile.customers} />}
+                {profile.marketCap && <DetailItem label="Market Cap" value={profile.marketCap} />}
+                {profile.stockTicker && <DetailItem label="Stock" value={profile.stockTicker} />}
+              </div>
+            </div>
+          )}
+
+          {/* competitive positioning */}
+          {(profile.marketPosition || profile.competitors) && (
+            <div className="glass-card p-4">
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5"><Trophy size={12} className="text-amber-400" /> Competitive Positioning</p>
+              {profile.marketPosition && <p className="text-sm text-text-secondary mb-3">{profile.marketPosition}</p>}
+              {profile.competitors && (
+                <div>
+                  <p className="text-xs text-text-muted mb-2">Key Competitors</p>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.competitors.split(", ").map((c, i) => (
+                      <span key={i} className="px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 rounded-full text-xs text-rose-400">{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* differentiators */}
+          {profile.differentiators && profile.differentiators.length > 0 && (
+            <div className="glass-card p-4">
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5"><Shield size={12} className="text-emerald-400" /> Key Differentiators</p>
+              <div className="space-y-2">
+                {profile.differentiators.map((d, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                    <span className="text-emerald-400 mt-0.5 flex-shrink-0">✓</span>
+                    <span>{d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ideal customer & pain points */}
+          {(profile.idealCustomer || profile.painPoints) && (
+            <div className="glass-card p-4">
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5"><Crosshair size={12} className="text-rose-400" /> Ideal Customer Profile</p>
+              {profile.idealCustomer && <p className="text-sm text-text-secondary mb-3">{profile.idealCustomer}</p>}
+              {profile.painPoints && profile.painPoints.length > 0 && (
+                <div>
+                  <p className="text-xs text-text-muted mb-2 flex items-center gap-1"><AlertTriangle size={10} className="text-amber-400" /> Customer Pain Points</p>
+                  <div className="space-y-1.5">
+                    {profile.painPoints.map((p, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                        <span className="text-amber-400 mt-0.5 flex-shrink-0">{i + 1}.</span>
+                        <span>{p}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* events & web presence */}
+          {(profile.website || profile.annualEvents) && (
+            <div className="glass-card p-4">
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5"><Calendar size={12} className="text-indigo-400" /> Presence & Events</p>
+              {profile.website && (
+                <div className="mb-2">
+                  <span className="text-xs text-text-muted">Website: </span>
+                  <span className="text-sm text-brand-glow">{profile.website}</span>
+                </div>
+              )}
+              {profile.annualEvents && (
+                <div>
+                  <span className="text-xs text-text-muted">Annual Events: </span>
+                  <span className="text-sm text-text-secondary">{profile.annualEvents}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* outreach name */}
           <div className="glass-card p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted">Outreach Name</span>
+              <span className="text-xs text-text-muted flex items-center gap-1"><User size={12} /> Outreach Name</span>
               <span className="text-sm font-medium text-text-primary">{profile.senderName}</span>
             </div>
           </div>
 
+          {/* how it works */}
           <div className="glass-card p-5 border-brand-blue/20">
             <h3 className="text-sm font-semibold text-text-primary mb-2">How Brand Brain works</h3>
             <div className="space-y-2 text-xs text-text-secondary leading-relaxed">
-              <p>All 5 AI agents use your Brand Brain data to personalize their work:</p>
+              <p>All 6 AI agents use your Brand Brain data to personalize their work:</p>
               <ul className="space-y-1 ml-4">
                 <li className="flex items-start gap-2"><span className="text-blue-400 mt-0.5">&#8226;</span> Scout searches for prospects matching your target market</li>
                 <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">&#8226;</span> Reach writes emails using your value proposition and brand tone</li>
+                <li className="flex items-start gap-2"><span className="text-purple-400 mt-0.5">&#8226;</span> QA scans emails for compliance, personalization, and tone</li>
                 <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">&#8226;</span> Closer references your product when analyzing deals</li>
                 <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">&#8226;</span> Ops includes your company details in invoices</li>
                 <li className="flex items-start gap-2"><span className="text-teal-400 mt-0.5">&#8226;</span> Assist answers support questions with product knowledge</li>
@@ -316,6 +481,15 @@ function ProfileCard({ icon, label, value, color, span }: { icon: React.ReactNod
         <span className="uppercase tracking-wider font-medium">{label}</span>
       </div>
       <p className="text-sm text-text-secondary leading-relaxed">{value}</p>
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] text-text-muted mb-0.5">{label}</p>
+      <p className="text-sm text-text-primary font-medium">{value}</p>
     </div>
   );
 }
