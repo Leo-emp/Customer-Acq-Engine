@@ -140,11 +140,7 @@ export default function Home() {
 
   // ── SETUP PHASE ──
   if (!profile) {
-    return (
-      <div className="min-h-screen py-12 px-6">
-        <SetupForm onComplete={setProfile} />
-      </div>
-    );
+    return <SetupForm onComplete={setProfile} />;
   }
 
   // ── DASHBOARD PHASE ──
