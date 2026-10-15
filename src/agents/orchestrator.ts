@@ -13,13 +13,13 @@ import type {
   CallRecord,
   Invoice,
 } from "@/lib/types";
+import type { CompanyProfile } from "@/lib/store";
 
 type EventCallback = (event: {
   type: string;
   payload: Record<string, unknown>;
 }) => void;
 
-// helper to emit events
 function emit(cb: EventCallback, type: string, payload: Record<string, unknown>) {
   cb({ type, payload });
 }
@@ -38,11 +38,18 @@ function stageChange(cb: EventCallback, stage: PipelineStage) {
   emit(cb, "stage_change", { stage });
 }
 
+export interface PipelineOptions {
+  prompt: string;
+  profile?: CompanyProfile | null;
+}
+
 // ── Main orchestration pipeline ──
 export async function runPipeline(
-  prompt: string,
+  opts: PipelineOptions,
   onEvent: EventCallback
 ): Promise<PipelineState> {
+  const { prompt, profile } = opts;
+
   const state: PipelineState = {
     stage: "idle",
     userPrompt: prompt,
@@ -54,27 +61,28 @@ export async function runPipeline(
   };
 
   try {
-    // extract product description from prompt (the prompt IS the product description)
+    const senderName = profile?.senderName || "Team";
+    const senderCompany = profile?.companyName || "AcquireAI";
     const productDescription = prompt;
-    const senderName = "Alex";
-    const senderCompany = "AcquireAI";
 
     // ═══════════════════════════════════════════
-    // STAGE 1: RESEARCH
+    // STAGE 1: RESEARCH — Scout finds leads via Apollo
     // ═══════════════════════════════════════════
     stageChange(onEvent, "researching");
     agentEvent(onEvent, "research", "thinking", "Analyzing your target market...");
+    agentEvent(onEvent, "research", "working", "Searching Apollo.io for real B2B leads...");
 
-    agentEvent(onEvent, "research", "working", "Searching for qualified prospects...");
     const prospects = await researchProspects(prompt);
     state.prospects = prospects;
+
+    const verifiedCount = prospects.filter((p) => p.emailVerified).length;
+    const noEmailCount = prospects.filter((p) => !p.email).length;
 
     agentEvent(
       onEvent,
       "research",
       "done",
-      `Found ${prospects.length} qualified prospects`,
-      prospects
+      `Found ${prospects.length} prospects — ${verifiedCount} verified emails, ${noEmailCount} without email`
     );
     emit(onEvent, "prospects", { prospects });
 
@@ -85,74 +93,63 @@ export async function runPipeline(
     }
 
     // ═══════════════════════════════════════════
-    // STAGE 2: OUTREACH (EMAIL)
+    // STAGE 2: OUTREACH — Reach drafts and sends emails
     // ═══════════════════════════════════════════
     stageChange(onEvent, "emailing");
-    agentEvent(onEvent, "outreach", "thinking", "Crafting personalized emails...");
 
-    // draft emails for top 5 prospects
-    const topProspects = prospects.slice(0, 5);
-    const drafts = await draftEmails(topProspects, productDescription, senderName);
+    // only email prospects with verified email addresses
+    const emailableProspects = prospects.filter((p) => p.email && p.emailVerified);
 
-    // send emails one by one with events
-    const sentEmails: EmailDraft[] = [];
-    for (const draft of drafts) {
-      const prospect = topProspects.find((p) => p.id === draft.prospectId);
-      agentEvent(
-        onEvent,
-        "outreach",
-        "working",
-        `Sending email to ${prospect?.contactName} at ${prospect?.companyName}...`
-      );
+    if (emailableProspects.length === 0) {
+      agentEvent(onEvent, "outreach", "error", "No verified email addresses found. Skipping outreach.");
+    } else {
+      agentEvent(onEvent, "outreach", "thinking", `Crafting personalized emails for ${emailableProspects.length} verified contacts...`);
 
-      try {
-        const sent = await sendDraftedEmail(draft, senderCompany);
-        sentEmails.push(sent);
-        // update prospect status
-        const p = state.prospects.find((pr) => pr.id === draft.prospectId);
-        if (p) p.status = "emailed";
+      const drafts = await draftEmails(emailableProspects, productDescription, senderName);
 
-        emit(onEvent, "email", { email: sent });
+      agentEvent(onEvent, "outreach", "working", `${drafts.length} emails drafted. Sending...`);
+
+      // send emails one by one
+      const sentEmails: EmailDraft[] = [];
+      for (const draft of drafts) {
+        const prospect = emailableProspects.find((p) => p.id === draft.prospectId);
         agentEvent(
           onEvent,
           "outreach",
           "working",
-          `Email sent to ${prospect?.contactName} ✓`
+          `Sending to ${prospect?.contactName} at ${prospect?.companyName}...`
         );
-      } catch {
-        agentEvent(
-          onEvent,
-          "outreach",
-          "error",
-          `Failed to send email to ${prospect?.contactName}`
-        );
+
+        try {
+          const sent = await sendDraftedEmail(draft, senderCompany);
+          sentEmails.push(sent);
+          const p = state.prospects.find((pr) => pr.id === draft.prospectId);
+          if (p) p.status = "emailed";
+          emit(onEvent, "email", { email: sent });
+        } catch {
+          agentEvent(onEvent, "outreach", "error", `Failed to send to ${prospect?.contactName}`);
+        }
       }
-    }
 
-    state.emails = sentEmails;
-    agentEvent(
-      onEvent,
-      "outreach",
-      "done",
-      `${sentEmails.length} emails sent. Waiting for engagement...`
-    );
-
-    // ═══════════════════════════════════════════
-    // STAGE 3: CALLING (voice call)
-    // ═══════════════════════════════════════════
-    stageChange(onEvent, "calling");
-
-    // for the demo: prepare the call for the first prospect
-    const callProspect = topProspects[0];
-    const callEmail = sentEmails[0];
-
-    if (callProspect && callEmail) {
+      state.emails = sentEmails;
       agentEvent(
         onEvent,
         "outreach",
-        "working",
-        `Preparing warm call to ${callProspect.contactName}...`
+        "done",
+        `${sentEmails.length}/${drafts.length} emails sent successfully`
       );
+    }
+
+    // ═══════════════════════════════════════════
+    // STAGE 3: CALLING — prepare voice call for top prospect
+    // ═══════════════════════════════════════════
+    stageChange(onEvent, "calling");
+
+    const callProspect = emailableProspects[0] || prospects[0];
+    const callEmail = state.emails[0];
+
+    if (callProspect && callEmail) {
+      agentEvent(onEvent, "outreach", "working", `Preparing warm call to ${callProspect.contactName}...`);
 
       const callScript = generateCallScript(
         callProspect,
@@ -160,29 +157,18 @@ export async function runPipeline(
         callEmail.subject
       );
 
-      // update prospect status
       const p = state.prospects.find((pr) => pr.id === callProspect.id);
       if (p) p.status = "called";
 
-      // emit call config for the frontend to trigger ElevenLabs widget
       emit(onEvent, "call_ready", {
         prospect: callProspect,
         callScript,
         agentId: process.env.ELEVENLABS_AGENT_ID || "",
       });
 
-      agentEvent(
-        onEvent,
-        "outreach",
-        "done",
-        `Voice call ready for ${callProspect.contactName}. Waiting for call to complete...`
-      );
-
-      // the call happens in the browser via ElevenLabs widget
-      // the transcript is sent back to /api/orchestrate/analyze when the call ends
+      agentEvent(onEvent, "outreach", "done", `Voice call ready for ${callProspect.contactName}`);
     }
 
-    // pipeline pauses here — call analysis continues via analyzeCallResult()
     emit(onEvent, "awaiting_call", { prospectId: callProspect?.id });
     return state;
   } catch (error) {
@@ -203,47 +189,25 @@ export async function analyzeCallResult(
   productDescription: string,
   onEvent: EventCallback
 ): Promise<{ call: CallRecord; invoice?: Invoice; pdfDataUrl?: string }> {
-  // ── STAGE 4: SALES ANALYSIS ──
   stageChange(onEvent, "selling");
   agentEvent(onEvent, "sales", "thinking", "Analyzing call transcript...");
 
   const callRecord = await analyzeCall(prospect, transcript, emailBody, productDescription);
 
-  agentEvent(
-    onEvent,
-    "sales",
-    "done",
-    `Outcome: ${callRecord.outcome.toUpperCase()} — ${callRecord.summary}`
-  );
+  agentEvent(onEvent, "sales", "done", `Outcome: ${callRecord.outcome.toUpperCase()} — ${callRecord.summary}`);
   emit(onEvent, "call", { call: callRecord });
 
-  // ── STAGE 5: ADMIN (if deal closed) ──
   if (callRecord.outcome === "closed") {
     stageChange(onEvent, "closing");
-    agentEvent(onEvent, "admin", "thinking", "Generating invoice and contract...");
+    agentEvent(onEvent, "admin", "thinking", "Generating invoice...");
 
-    const { invoice, pdfDataUrl } = await generateInvoice(
-      prospect,
-      callRecord,
-      productDescription
-    );
+    const { invoice, pdfDataUrl } = await generateInvoice(prospect, callRecord, productDescription);
 
-    agentEvent(
-      onEvent,
-      "admin",
-      "done",
-      `Invoice ${invoice.id} generated — $${invoice.total.toFixed(2)}`
-    );
+    agentEvent(onEvent, "admin", "done", `Invoice ${invoice.id} generated — $${invoice.total.toFixed(2)}`);
     emit(onEvent, "invoice", { invoice, pdfDataUrl });
 
-    // ── STAGE 6: SUPPORT READY ──
     stageChange(onEvent, "supporting");
-    agentEvent(
-      onEvent,
-      "support",
-      "done",
-      `Customer support activated for ${prospect.companyName}`
-    );
+    agentEvent(onEvent, "support", "done", `Customer support activated for ${prospect.companyName}`);
 
     stageChange(onEvent, "complete");
     emit(onEvent, "done", {});
@@ -251,28 +215,12 @@ export async function analyzeCallResult(
     return { call: callRecord, invoice, pdfDataUrl };
   }
 
-  // for non-closed outcomes, pipeline pauses
   if (callRecord.outcome === "interested") {
-    agentEvent(
-      onEvent,
-      "sales",
-      "working",
-      "Prospect is interested — sending Calendly link..."
-    );
+    agentEvent(onEvent, "sales", "working", "Prospect is interested — scheduling follow-up...");
   } else if (callRecord.outcome === "objection") {
-    agentEvent(
-      onEvent,
-      "sales",
-      "working",
-      "Prospect has concerns — crafting response..."
-    );
+    agentEvent(onEvent, "sales", "working", "Prospect has concerns — preparing response...");
   } else {
-    agentEvent(
-      onEvent,
-      "sales",
-      "done",
-      "Prospect declined. Moving to next lead."
-    );
+    agentEvent(onEvent, "sales", "done", "Prospect declined. Moving to next lead.");
   }
 
   emit(onEvent, "done", {});

@@ -4,15 +4,14 @@ import { NextRequest } from "next/server";
 import { runPipeline, analyzeCallResult } from "@/agents/orchestrator";
 import type { Prospect } from "@/lib/types";
 
-// POST /api/orchestrate — start the pipeline
+// POST /api/orchestrate — start the full pipeline
 export async function POST(req: NextRequest) {
-  const { prompt } = await req.json();
+  const { prompt, profile } = await req.json();
 
   if (!prompt || typeof prompt !== "string") {
     return Response.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  // create a readable stream for SSE
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -22,7 +21,7 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        await runPipeline(prompt, send);
+        await runPipeline({ prompt, profile }, send);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Pipeline failed";
         send({ type: "error", payload: { message } });
