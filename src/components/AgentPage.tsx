@@ -1806,7 +1806,7 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
-  const [dealDesc, setDealDesc] = useState(profile?.productDescription || "");
+  const [dealDesc, setDealDesc] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [genInvoice, setGenInvoice] = useState<Invoice | null>(null);
   const [genPdf, setGenPdf] = useState("");
