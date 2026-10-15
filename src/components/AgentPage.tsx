@@ -201,6 +201,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             pdfDataUrl={pdfDataUrl}
             profile={profile}
             onAddEvent={onAddEvent}
+            prospects={prospects}
           />
         )}
 
@@ -410,8 +411,10 @@ function SalesTool({ callRecord, onAddEvent }: {
   onAddEvent: (event: AgentEvent) => void;
 }) {
   const [transcript, setTranscript] = useState("");
+  const [prospectName, setProspectName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [result, setResult] = useState<{ outcome: string; summary: string; nextAction: string; insights: string[] } | null>(null);
+  const [result, setResult] = useState<{ outcome: string; summary: string; nextAction: string; insights: string[]; pdfDataUrl: string } | null>(null);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -424,12 +427,12 @@ function SalesTool({ callRecord, onAddEvent }: {
       const res = await fetch("/api/agents/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: transcript.trim() }),
+        body: JSON.stringify({ transcript: transcript.trim(), prospectName: prospectName.trim() || "Prospect", companyName: companyName.trim() || "Company" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setResult({ outcome: data.callRecord.outcome, summary: data.callRecord.summary, nextAction: data.callRecord.nextAction, insights: data.insights });
+      setResult({ outcome: data.callRecord.outcome, summary: data.callRecord.summary, nextAction: data.callRecord.nextAction, insights: data.insights, pdfDataUrl: data.pdfDataUrl });
       onAddEvent({ agent: "sales", status: "done", message: `Deal classified: ${data.callRecord.outcome}`, timestamp: Date.now() });
     } catch (err) {
       onAddEvent({ agent: "sales", status: "error", message: err instanceof Error ? err.message : "Analysis failed", timestamp: Date.now() });
@@ -441,7 +444,13 @@ function SalesTool({ callRecord, onAddEvent }: {
   return (
     <div className="space-y-4">
       <form onSubmit={handleAnalyze} className="glass-card p-4">
-        <p className="text-xs text-text-muted mb-3">Paste a call transcript, email thread, or meeting notes to analyze the deal</p>
+        <p className="text-xs text-text-muted mb-3">Paste a call transcript, email thread, or meeting notes — Closer will analyze the deal and generate a structured PDF report</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <input type="text" value={prospectName} onChange={(e) => setProspectName(e.target.value)} placeholder="Contact name (optional)"
+            className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-emerald-500/50 text-text-primary placeholder:text-text-muted" disabled={isAnalyzing} />
+          <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company name (optional)"
+            className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-emerald-500/50 text-text-primary placeholder:text-text-muted" disabled={isAnalyzing} />
+        </div>
         <textarea
           value={transcript} onChange={(e) => setTranscript(e.target.value)}
           placeholder="Paste your call transcript or conversation here..."
@@ -457,14 +466,22 @@ function SalesTool({ callRecord, onAddEvent }: {
 
       {result && (
         <div className="glass-card p-5 animate-fade-in-up">
-          <div className="flex items-center gap-3 mb-4">
-            <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase ${
-              result.outcome === "closed" ? "bg-emerald-500/20 text-emerald-400"
-              : result.outcome === "interested" ? "bg-blue-500/20 text-blue-400"
-              : result.outcome === "objection" ? "bg-amber-500/20 text-amber-400"
-              : "bg-rose-500/20 text-rose-400"
-            }`}>{result.outcome}</span>
-            <h3 className="text-sm font-semibold text-text-primary">Deal Analysis</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase ${
+                result.outcome === "closed" ? "bg-emerald-500/20 text-emerald-400"
+                : result.outcome === "interested" ? "bg-blue-500/20 text-blue-400"
+                : result.outcome === "objection" ? "bg-amber-500/20 text-amber-400"
+                : "bg-rose-500/20 text-rose-400"
+              }`}>{result.outcome}</span>
+              <h3 className="text-sm font-semibold text-text-primary">Deal Analysis</h3>
+            </div>
+            {result.pdfDataUrl && (
+              <a href={result.pdfDataUrl} download={`call-notes-${Date.now()}.pdf`}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 transition-all cursor-pointer">
+                <FileText size={14} /> Download PDF
+              </a>
+            )}
           </div>
           <p className="text-sm text-text-secondary mb-3">{result.summary}</p>
           <p className="text-xs text-text-muted mb-4">Next step: {result.nextAction}</p>
@@ -508,24 +525,33 @@ function SalesTool({ callRecord, onAddEvent }: {
   );
 }
 
-function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent }: {
+function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
   invoice: Invoice | null;
   pdfDataUrl: string;
   profile: CompanyProfile | null;
   onAddEvent: (event: AgentEvent) => void;
+  prospects: Prospect[];
 }) {
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
-  const [dealDesc, setDealDesc] = useState("");
+  const [dealDesc, setDealDesc] = useState(profile?.productDescription || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [genInvoice, setGenInvoice] = useState<Invoice | null>(null);
   const [genPdf, setGenPdf] = useState("");
 
+  const handleSelectProspect = (p: Prospect) => {
+    setSelectedProspect(p);
+    setCompanyName(p.companyName);
+    setContactName(p.contactName);
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim()) return;
+    const client = companyName.trim();
+    if (!client) return;
     setIsGenerating(true);
-    onAddEvent({ agent: "admin", status: "working", message: `Generating invoice for ${companyName}`, timestamp: Date.now() });
+    onAddEvent({ agent: "admin", status: "working", message: `Generating invoice for ${client}`, timestamp: Date.now() });
 
     try {
       const res = await fetch("/api/agents/admin", {
@@ -533,7 +559,7 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "generate",
-          companyName: companyName.trim(),
+          companyName: client,
           contactName: contactName.trim() || undefined,
           productDescription: dealDesc.trim() || profile?.productDescription || "Consulting services",
           dealSummary: dealDesc.trim() || undefined,
@@ -557,15 +583,32 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent }: {
 
   return (
     <div className="space-y-4">
+      {/* quick-select from prospects */}
+      {prospects.length > 0 && (
+        <div className="glass-card p-4">
+          <p className="text-xs text-text-muted mb-3">Select a prospect to auto-fill invoice details</p>
+          <div className="flex flex-wrap gap-2">
+            {prospects.map((p) => (
+              <button key={p.id} onClick={() => handleSelectProspect(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  selectedProspect?.id === p.id ? "bg-indigo-500/20 border border-indigo-500/30 text-indigo-400" : "bg-space-800 border border-card-border text-text-secondary hover:bg-space-700"
+                }`}>
+                {p.companyName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleGenerate} className="glass-card p-4">
-        <p className="text-xs text-text-muted mb-3">Generate a professional invoice with AI-suggested line items</p>
+        <p className="text-xs text-text-muted mb-3">Generate a professional invoice — auto-fills from Brand Brain and pipeline data</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Client company name *"
             className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted" disabled={isGenerating} />
-          <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name (optional)"
+          <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name"
             className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted" disabled={isGenerating} />
         </div>
-        <input type="text" value={dealDesc} onChange={(e) => setDealDesc(e.target.value)} placeholder="Product/service description (optional — uses Brand Brain if blank)"
+        <input type="text" value={dealDesc} onChange={(e) => setDealDesc(e.target.value)} placeholder="Product/service description"
           className="w-full bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted mb-3" disabled={isGenerating} />
         <button type="submit" disabled={!companyName.trim() || isGenerating}
           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
@@ -576,7 +619,7 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent }: {
       {displayInvoice ? (
         <InvoiceView invoice={displayInvoice} pdfDataUrl={displayPdf} />
       ) : (
-        <EmptyWorkspace message="Generate an invoice above, or invoices will appear here when a deal closes in the pipeline." />
+        <EmptyWorkspace message="Select a prospect or enter client details above to generate an invoice." />
       )}
     </div>
   );

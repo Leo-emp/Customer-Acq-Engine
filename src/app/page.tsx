@@ -103,7 +103,7 @@ export default function Home() {
     setActiveView("overview");
 
     const fullPrompt = profile
-      ? `Company: ${profile.companyName}\nProduct: ${profile.productDescription}\nValue Prop: ${profile.valueProposition}\nTarget Market: ${profile.targetMarket}\nSender: ${profile.senderName}\n\nGoal: ${userPrompt}`
+      ? `Company: ${profile.companyName}\nIndustry: ${profile.industry}\nProduct: ${profile.productDescription}\nValue Prop: ${profile.valueProposition}\nTarget Market: ${profile.targetMarket}\nKey Features: ${profile.keyFeatures?.join(", ")}\nPricing: ${profile.pricing}\nBrand Tone: ${profile.tone}\nSender: ${profile.senderName}\n\nGoal: ${userPrompt}`
       : userPrompt;
 
     try {
@@ -143,7 +143,7 @@ export default function Home() {
         <SetupModal
           onComplete={(p) => { setProfile(p); setShowSetup(false); }}
           onSkip={() => {
-            setProfile({ companyName: "Demo Corp", productDescription: "AI-powered SaaS platform", targetMarket: "B2B tech companies", senderName: "Alex", senderEmail: "", valueProposition: "Automate customer acquisition with AI", calendlyUrl: "" });
+            setProfile({ companyName: "Demo Corp", productDescription: "AI-powered SaaS platform", targetMarket: "B2B tech companies", senderName: "Alex", senderEmail: "", valueProposition: "Automate customer acquisition with AI", calendlyUrl: "", industry: "Technology", keyFeatures: ["AI Automation", "Lead Generation", "Email Outreach"], pricing: "Starting at $99/month", tone: "Professional and friendly" });
             setShowSetup(false);
           }}
         />

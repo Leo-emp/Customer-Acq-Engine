@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { agentThinkJSON } from "@/lib/gemini";
+import { generateCallNotePDF } from "@/lib/pdf";
 import type { CallRecord, DealOutcome } from "@/lib/types";
 
 interface AnalysisOutput {
@@ -10,7 +11,7 @@ interface AnalysisOutput {
 }
 
 export async function POST(req: NextRequest) {
-  const { transcript, prospectId } = await req.json();
+  const { transcript, prospectId, prospectName, companyName } = await req.json();
 
   if (!transcript || typeof transcript !== "string") {
     return Response.json({ error: "transcript is required" }, { status: 400 });
@@ -37,7 +38,17 @@ export async function POST(req: NextRequest) {
       nextAction: result.nextAction,
     };
 
-    return Response.json({ callRecord, insights: result.keyInsights });
+    const pdfDataUrl = generateCallNotePDF(
+      prospectName || "Unknown",
+      companyName || "Unknown",
+      result.outcome,
+      result.summary,
+      result.nextAction,
+      transcript,
+      result.keyInsights
+    );
+
+    return Response.json({ callRecord, insights: result.keyInsights, pdfDataUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Analysis failed";
     return Response.json({ error: message }, { status: 500 });

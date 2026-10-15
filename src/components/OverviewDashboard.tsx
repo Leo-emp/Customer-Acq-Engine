@@ -59,12 +59,12 @@ export default function OverviewDashboard({ profile, stage, isRunning, events, p
           className="flex items-center gap-3"
         >
           <input name="prompt" type="text"
-            placeholder={profile ? `Find customers for ${profile.productDescription.slice(0, 50)}...` : "Set up your company first..."}
+            placeholder={profile ? `Find customers for ${profile.productDescription.slice(0, 50)}...` : "e.g. Find SaaS companies that need AI automation"}
             className="flex-1 bg-transparent text-base px-4 py-3 outline-none placeholder:text-text-muted text-text-primary"
-            disabled={isRunning || !profile} />
-          <button type="submit" disabled={isRunning || !profile}
+            disabled={isRunning} />
+          <button type="submit" disabled={isRunning}
             className="px-6 py-3 bg-brand-blue hover:bg-blue-500 disabled:bg-space-600 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
-            {isRunning ? "Running..." : "Launch"}
+            {isRunning ? "Running..." : "Launch Pipeline"}
           </button>
         </form>
       </div>
@@ -119,11 +119,7 @@ export default function OverviewDashboard({ profile, stage, isRunning, events, p
           {stage === "idle" && !isRunning && (
             <div className="px-5 pb-4">
               <div className="text-center py-4 text-sm text-text-muted">
-                {profile ? (
-                  <>Type your acquisition goal above to start the pipeline <ArrowRight size={14} className="inline" /></>
-                ) : (
-                  <>Set up your company to get started</>
-                )}
+                <>Type your acquisition goal above and hit Launch Pipeline to orchestrate all 5 AI agents <ArrowRight size={14} className="inline" /></>
               </div>
             </div>
           )}

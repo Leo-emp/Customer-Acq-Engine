@@ -66,6 +66,10 @@ export default function SetupForm({ onComplete }: SetupFormProps) {
       senderEmail: "",
       valueProposition: extracted.valueProposition,
       calendlyUrl: "",
+      industry: extracted.industry,
+      keyFeatures: extracted.keyFeatures,
+      pricing: extracted.pricing,
+      tone: extracted.tone,
     });
   };
 

@@ -8,14 +8,8 @@ export interface CompanyProfile {
   senderEmail: string;
   valueProposition: string;
   calendlyUrl: string;
+  industry: string;
+  keyFeatures: string[];
+  pricing: string;
+  tone: string;
 }
-
-export const DEFAULT_PROFILE: CompanyProfile = {
-  companyName: "",
-  productDescription: "",
-  targetMarket: "",
-  senderName: "",
-  senderEmail: "",
-  valueProposition: "",
-  calendlyUrl: "",
-};

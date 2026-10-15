@@ -61,6 +61,10 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
       senderEmail: "",
       valueProposition: extracted.valueProposition,
       calendlyUrl: "",
+      industry: extracted.industry,
+      keyFeatures: extracted.keyFeatures,
+      pricing: extracted.pricing,
+      tone: extracted.tone,
     });
     setConfirmed(true);
   };

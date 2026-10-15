@@ -59,6 +59,10 @@ export default function SetupModal({ onComplete, onSkip }: SetupModalProps) {
       senderEmail: "",
       valueProposition: extracted.valueProposition,
       calendlyUrl: "",
+      industry: extracted.industry,
+      keyFeatures: extracted.keyFeatures,
+      pricing: extracted.pricing,
+      tone: extracted.tone,
     });
   };
 
