@@ -31,14 +31,12 @@ const AGENT_META: Record<string, AgentMeta> = {
   research: {
     name: "Scout", title: "Research Agent", icon: <Search size={24} />, color: "text-blue-400", gradient: "from-blue-500 to-cyan-500", borderColor: "border-blue-500/30",
     capabilities: [
-      { label: "Search for leads", prompt: "Find potential B2B customers in the tech industry" },
-      { label: "Score & rank leads", prompt: "Find and rank the top 10 best-fit companies for our product" },
-      { label: "Industry research", prompt: "Research companies in the healthcare SaaS space" },
-      { label: "Find contacts", prompt: "Find decision makers at enterprise companies" },
-      { label: "Competitor analysis", prompt: "Find companies similar to our competitors' customers" },
-      { label: "Market mapping", prompt: "Map the market landscape for AI automation tools" },
+      { label: "Search for Leads", action: "leads" },
+      { label: "Competitor Analysis", action: "competitors" },
+      { label: "Industry Research", action: "industry" },
+      { label: "Market Mapping", action: "market" },
     ],
-    description: "Scout autonomously searches the web for potential customers matching your target market. Click any action below or type your own query.",
+    description: "Scout uses AI to research your market landscape. Each tool auto-executes using your Brand Brain identity.",
   },
   outreach: {
     name: "Reach", title: "Outreach Agent", icon: <Mail size={24} />, color: "text-amber-400", gradient: "from-amber-500 to-orange-500", borderColor: "border-amber-500/30",
@@ -309,62 +307,484 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
   profile: CompanyProfile | null;
   quickAction: string;
 }) {
-  const [query, setQuery] = useState(quickAction || "");
+  const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [activeAction, setActiveAction] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [leadSummary, setLeadSummary] = useState<any>(null);
 
-  useEffect(() => { if (quickAction) setQuery(quickAction); }, [quickAction]);
+  // # auto-execute when quick action button is clicked
+  useEffect(() => {
+    if (quickAction && quickAction !== activeAction && !isSearching) {
+      if (quickAction === "leads") return; // leads needs a query
+      executeAction(quickAction);
+    }
+  }, [quickAction]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const searchQuery = query.trim() || (profile ? `Find B2B customers for ${profile.productDescription} targeting ${profile.targetMarket}` : "");
-    if (!searchQuery) return;
-
+  const executeAction = async (action: string, searchQuery?: string) => {
+    if (!profile && action !== "leads") {
+      onAddEvent({ agent: "research", status: "error", message: "Set up Brand Brain first", timestamp: Date.now() });
+      return;
+    }
     setIsSearching(true);
-    onAddEvent({ agent: "research", status: "working", message: `Searching: "${searchQuery}"`, timestamp: Date.now() });
+    setActiveAction(action);
+    setAnalysisResult(null);
+
+    const labels: Record<string, string> = {
+      leads: "Searching Apollo for leads...",
+      competitors: "Analyzing competitors...",
+      industry: "Researching industry...",
+      market: "Mapping market landscape...",
+    };
+    onAddEvent({ agent: "research", status: "working", message: labels[action] || "Working...", timestamp: Date.now() });
 
     try {
+      const body: Record<string, unknown> = { action, profile };
+      if (action === "leads") {
+        body.query = searchQuery || `Find B2B customers for ${profile?.productDescription} targeting ${profile?.targetMarket}`;
+      }
+
       const res = await fetch("/api/agents/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery, profile }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      onAddProspects(data.prospects);
-      onAddEvent({ agent: "research", status: "done", message: `Found ${data.prospects.length} qualified leads`, timestamp: Date.now() });
+      if (action === "leads") {
+        onAddProspects(data.prospects);
+        setLeadSummary(data.summary);
+        onAddEvent({ agent: "research", status: "done", message: `Found ${data.prospects.length} qualified leads`, timestamp: Date.now() });
+      } else {
+        setAnalysisResult({ action, ...data });
+        const doneMessages: Record<string, string> = {
+          competitors: `Identified ${data.competitors?.length || 0} competitors`,
+          industry: `Industry report complete: ${data.overview?.industryName || ""}`,
+          market: `Market map complete: ${data.segments?.length || 0} segments identified`,
+        };
+        onAddEvent({ agent: "research", status: "done", message: doneMessages[action] || "Analysis complete", timestamp: Date.now() });
+      }
     } catch (err) {
-      onAddEvent({ agent: "research", status: "error", message: err instanceof Error ? err.message : "Search failed", timestamp: Date.now() });
+      onAddEvent({ agent: "research", status: "error", message: err instanceof Error ? err.message : "Failed", timestamp: Date.now() });
     } finally {
       setIsSearching(false);
     }
   };
 
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim() || (profile ? `Find B2B customers for ${profile.productDescription} targeting ${profile.targetMarket}` : "");
+    if (!q) return;
+    executeAction("leads", q);
+  };
+
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSearch} className="glass-card p-4">
-        <p className="text-xs text-text-muted mb-3">Search for leads by entering a query, or let Scout use your Brand Brain profile</p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 flex items-center gap-2 bg-space-800 rounded-xl border border-card-border px-3 py-2.5">
-            <Search size={16} className="text-text-muted flex-shrink-0" />
-            <input
-              type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder={profile ? `e.g. "SaaS companies in ${profile.targetMarket}"` : "Describe your ideal customer..."}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted text-text-primary"
-              disabled={isSearching}
-            />
+      {/* loading state */}
+      {isSearching && (
+        <div className="glass-card p-6 border border-blue-500/20">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <Loader2 size={20} className="text-blue-400 animate-spin" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-text-primary">
+                {activeAction === "leads" ? "Searching Apollo.io..." : activeAction === "competitors" ? "Analyzing Competitors..." : activeAction === "industry" ? "Researching Industry..." : "Mapping Market..."}
+              </p>
+              <p className="text-xs text-text-muted mt-0.5">Using {profile?.companyName || "your"} Brand Brain identity</p>
+            </div>
+            <div className="flex gap-1">
+              <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
           </div>
-          <button type="submit" disabled={isSearching}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm whitespace-nowrap">
-            {isSearching ? (<><Loader2 size={16} className="animate-spin" /> Searching...</>) : (<><Search size={16} /> Find Leads</>)}
-          </button>
         </div>
-      </form>
+      )}
 
-      {prospects.length > 0 ? (
-        <LeadList prospects={prospects} activeProspectId={activeProspectId} onSelect={onSelectProspect} />
-      ) : (
-        <EmptyWorkspace message="Qualified leads will appear here. Search above or run the full pipeline." />
+      {/* lead search input */}
+      {(activeAction === "leads" || activeAction === "" || !analysisResult) && (
+        <form onSubmit={handleSearch} className="glass-card p-4">
+          <p className="text-xs text-text-muted mb-3">Search Apollo.io for real B2B leads matching your target market</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center gap-2 bg-space-800 rounded-xl border border-card-border px-3 py-2.5">
+              <Search size={16} className="text-text-muted flex-shrink-0" />
+              <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder={profile ? `e.g. "SaaS companies in ${profile.targetMarket}"` : "Describe your ideal customer..."}
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted text-text-primary" disabled={isSearching} />
+            </div>
+            <button type="submit" disabled={isSearching}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm whitespace-nowrap">
+              {isSearching && activeAction === "leads" ? (<><Loader2 size={16} className="animate-spin" /> Searching...</>) : (<><Search size={16} /> Find Leads</>)}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* lead summary card */}
+      {leadSummary && prospects.length > 0 && (
+        <div className="glass-card p-4 border border-blue-500/20">
+          <h4 className="text-sm font-semibold text-text-primary mb-3">Search Results Summary</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-space-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-blue-400">{leadSummary.totalLeads}</p>
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Total Leads</p>
+            </div>
+            <div className="bg-space-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-emerald-400">{leadSummary.verifiedEmails}</p>
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Verified Emails</p>
+            </div>
+            <div className="bg-space-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-amber-400">{leadSummary.avgScore}</p>
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Avg Score</p>
+            </div>
+            <div className="bg-space-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-purple-400">{leadSummary.scoreBreakdown?.excellent || 0}</p>
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Top Matches</p>
+            </div>
+          </div>
+          {leadSummary.topIndustries?.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {leadSummary.topIndustries.map((ind: string, i: number) => (
+                <span key={i} className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] text-blue-300">{ind}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* lead table */}
+      {prospects.length > 0 && <LeadList prospects={prospects} activeProspectId={activeProspectId} onSelect={onSelectProspect} />}
+
+      {/* ── COMPETITOR ANALYSIS OUTPUT ── */}
+      {analysisResult?.action === "competitors" && (
+        <div className="space-y-4 animate-fade-in-up">
+          <div className="glass-card p-5 border border-rose-500/20">
+            <h3 className="text-lg font-bold text-text-primary mb-1">Competitive Analysis</h3>
+            <p className="text-xs text-text-muted">Based on {profile?.companyName}'s market position</p>
+          </div>
+
+          {/* competitor cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {analysisResult.competitors?.map((comp: { name: string; website: string; description: string; strengths: string[]; weaknesses: string[]; pricing: string; marketPosition: string; threatLevel: string }, i: number) => (
+              <div key={i} className="glass-card p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h4 className="text-sm font-semibold text-text-primary">{comp.name}</h4>
+                    <p className="text-[10px] text-text-muted">{comp.website}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                      comp.threatLevel === "high" ? "bg-rose-500/20 text-rose-400" :
+                      comp.threatLevel === "medium" ? "bg-amber-500/20 text-amber-400" :
+                      "bg-emerald-500/20 text-emerald-400"
+                    }`}>{comp.threatLevel} threat</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-space-700 text-text-muted">{comp.marketPosition}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-text-secondary mb-3">{comp.description}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-emerald-400 uppercase tracking-wider mb-1.5 font-medium">Strengths</p>
+                    {comp.strengths?.map((s: string, j: number) => (
+                      <p key={j} className="text-[11px] text-text-muted flex items-start gap-1.5 mb-1"><span className="text-emerald-400 mt-0.5 flex-shrink-0">+</span>{s}</p>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-rose-400 uppercase tracking-wider mb-1.5 font-medium">Weaknesses</p>
+                    {comp.weaknesses?.map((w: string, j: number) => (
+                      <p key={j} className="text-[11px] text-text-muted flex items-start gap-1.5 mb-1"><span className="text-rose-400 mt-0.5 flex-shrink-0">-</span>{w}</p>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-2 pt-2 border-t border-card-border">
+                  <p className="text-[10px] text-text-muted">Pricing: <span className="text-text-secondary">{comp.pricing}</span></p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* strategic insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="glass-card p-4 border border-emerald-500/20">
+              <h4 className="text-xs text-emerald-400 uppercase tracking-wider font-medium mb-3">Our Advantages</h4>
+              {analysisResult.ourAdvantages?.map((a: string, i: number) => (
+                <p key={i} className="text-xs text-text-secondary flex items-start gap-2 mb-2"><span className="text-emerald-400 mt-0.5 flex-shrink-0">&#9679;</span>{a}</p>
+              ))}
+            </div>
+            <div className="glass-card p-4 border border-rose-500/20">
+              <h4 className="text-xs text-rose-400 uppercase tracking-wider font-medium mb-3">Our Vulnerabilities</h4>
+              {analysisResult.ourVulnerabilities?.map((v: string, i: number) => (
+                <p key={i} className="text-xs text-text-secondary flex items-start gap-2 mb-2"><span className="text-rose-400 mt-0.5 flex-shrink-0">&#9679;</span>{v}</p>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-card p-4 border border-blue-500/20">
+            <h4 className="text-xs text-blue-400 uppercase tracking-wider font-medium mb-3">Strategic Recommendations</h4>
+            <div className="space-y-2">
+              {analysisResult.strategicRecommendations?.map((r: string, i: number) => (
+                <div key={i} className="flex items-start gap-3 bg-space-800 rounded-lg p-3">
+                  <span className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400 flex-shrink-0">{i + 1}</span>
+                  <p className="text-xs text-text-secondary">{r}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {analysisResult.marketGaps?.length > 0 && (
+            <div className="glass-card p-4 border border-purple-500/20">
+              <h4 className="text-xs text-purple-400 uppercase tracking-wider font-medium mb-3">Market Gaps to Exploit</h4>
+              <div className="flex flex-wrap gap-2">
+                {analysisResult.marketGaps.map((g: string, i: number) => (
+                  <span key={i} className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs text-purple-300">{g}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── INDUSTRY RESEARCH OUTPUT ── */}
+      {analysisResult?.action === "industry" && (
+        <div className="space-y-4 animate-fade-in-up">
+          {/* overview card */}
+          <div className="glass-card p-5 border border-cyan-500/20">
+            <h3 className="text-lg font-bold text-text-primary mb-1">{analysisResult.overview?.industryName || "Industry"} Report</h3>
+            <p className="text-xs text-text-secondary leading-relaxed mb-4">{analysisResult.overview?.summary}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-space-800 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-cyan-400">{analysisResult.overview?.marketSize}</p>
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Market Size</p>
+              </div>
+              <div className="bg-space-800 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-emerald-400">{analysisResult.overview?.growthRate}</p>
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Growth Rate</p>
+              </div>
+              <div className="bg-space-800 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-amber-400 capitalize">{analysisResult.overview?.maturityStage}</p>
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Stage</p>
+              </div>
+            </div>
+          </div>
+
+          {/* trends */}
+          <div className="glass-card p-4">
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Key Trends</h4>
+            <div className="space-y-3">
+              {analysisResult.trends?.map((t: { trend: string; impact: string; timeframe: string; relevance: string }, i: number) => (
+                <div key={i} className="bg-space-800 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-text-primary">{t.trend}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        t.relevance === "high" ? "bg-rose-500/20 text-rose-400" :
+                        t.relevance === "medium" ? "bg-amber-500/20 text-amber-400" :
+                        "bg-slate-500/20 text-slate-400"
+                      }`}>{t.relevance}</span>
+                      <span className="text-[10px] text-text-muted bg-space-700 px-2 py-0.5 rounded-full">{t.timeframe}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-text-muted">{t.impact}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* key players */}
+          <div className="glass-card p-4">
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Key Players</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {analysisResult.keyPlayers?.map((p: { name: string; role: string; marketShare: string }, i: number) => (
+                <div key={i} className="bg-space-800 rounded-lg p-3">
+                  <p className="text-sm font-medium text-text-primary">{p.name}</p>
+                  <p className="text-[10px] text-text-muted mt-0.5">{p.role}</p>
+                  <p className="text-xs text-cyan-400 font-medium mt-1">{p.marketShare}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* opportunities + threats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="glass-card p-4 border border-emerald-500/20">
+              <h4 className="text-xs text-emerald-400 uppercase tracking-wider font-medium mb-3">Opportunities</h4>
+              {analysisResult.opportunities?.map((o: { opportunity: string; description: string; difficulty: string; potentialRevenue: string }, i: number) => (
+                <div key={i} className="bg-space-800 rounded-lg p-3 mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-text-primary">{o.opportunity}</span>
+                    <span className="text-[10px] text-emerald-400 font-medium">{o.potentialRevenue}</span>
+                  </div>
+                  <p className="text-[11px] text-text-muted">{o.description}</p>
+                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] bg-space-700 text-text-muted">{o.difficulty}</span>
+                </div>
+              ))}
+            </div>
+            <div className="glass-card p-4 border border-rose-500/20">
+              <h4 className="text-xs text-rose-400 uppercase tracking-wider font-medium mb-3">Threats</h4>
+              {analysisResult.threats?.map((t: { threat: string; severity: string; mitigation: string }, i: number) => (
+                <div key={i} className="bg-space-800 rounded-lg p-3 mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-text-primary">{t.threat}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                      t.severity === "high" ? "bg-rose-500/20 text-rose-400" :
+                      t.severity === "medium" ? "bg-amber-500/20 text-amber-400" :
+                      "bg-slate-500/20 text-slate-400"
+                    }`}>{t.severity}</span>
+                  </div>
+                  <p className="text-[11px] text-text-muted">{t.mitigation}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* outlook */}
+          <div className="glass-card p-4 border border-cyan-500/20">
+            <h4 className="text-xs text-cyan-400 uppercase tracking-wider font-medium mb-2">Industry Outlook</h4>
+            <p className="text-sm text-text-secondary leading-relaxed">{analysisResult.outlook}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── MARKET MAPPING OUTPUT ── */}
+      {analysisResult?.action === "market" && (
+        <div className="space-y-4 animate-fade-in-up">
+          {/* TAM/SAM overview */}
+          <div className="glass-card p-5 border border-violet-500/20">
+            <h3 className="text-lg font-bold text-text-primary mb-4">Market Map</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-space-800 rounded-lg p-4">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Total Addressable Market</p>
+                <p className="text-2xl font-bold text-violet-400">{analysisResult.totalAddressableMarket?.size}</p>
+                <p className="text-xs text-text-muted mt-1">{analysisResult.totalAddressableMarket?.description}</p>
+              </div>
+              <div className="bg-space-800 rounded-lg p-4">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Serviceable Market</p>
+                <p className="text-2xl font-bold text-emerald-400">{analysisResult.serviceableMarket?.size}</p>
+                <p className="text-xs text-text-muted mt-1">{analysisResult.serviceableMarket?.description}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* segments */}
+          <div className="glass-card p-4">
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Market Segments</h4>
+            <div className="space-y-2">
+              {analysisResult.segments?.map((seg: { name: string; size: string; growth: string; competition: string; ourFit: string; description: string; entryStrategy: string }, i: number) => {
+                const isPriority = analysisResult.prioritySegments?.includes(seg.name);
+                return (
+                  <div key={i} className={`bg-space-800 rounded-lg p-4 ${isPriority ? "border border-violet-500/30" : ""}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-text-primary">{seg.name}</span>
+                        {isPriority && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/20 text-violet-400">PRIORITY</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">{seg.size}</span>
+                        <span className="text-xs text-emerald-400">{seg.growth}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-text-muted mb-2">{seg.description}</p>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        seg.competition === "blue ocean" ? "bg-blue-500/20 text-blue-400" :
+                        seg.competition === "underserved" ? "bg-emerald-500/20 text-emerald-400" :
+                        seg.competition === "moderate" ? "bg-amber-500/20 text-amber-400" :
+                        seg.competition === "competitive" ? "bg-orange-500/20 text-orange-400" :
+                        "bg-rose-500/20 text-rose-400"
+                      }`}>{seg.competition}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        seg.ourFit === "strong" ? "bg-emerald-500/20 text-emerald-400" :
+                        seg.ourFit === "moderate" ? "bg-amber-500/20 text-amber-400" :
+                        "bg-slate-500/20 text-slate-400"
+                      }`}>Fit: {seg.ourFit}</span>
+                    </div>
+                    <p className="text-[11px] text-text-muted mt-2 italic">{seg.entryStrategy}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* buyer personas */}
+          <div className="glass-card p-4">
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Buyer Personas</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {analysisResult.buyerPersonas?.map((bp: { title: string; companySize: string; painPoints: string[]; decisionFactors: string[]; budget: string }, i: number) => (
+                <div key={i} className="bg-space-800 rounded-lg p-4">
+                  <p className="text-sm font-medium text-text-primary mb-0.5">{bp.title}</p>
+                  <p className="text-[10px] text-text-muted mb-2">{bp.companySize} | Budget: {bp.budget}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] text-rose-400 uppercase tracking-wider mb-1.5 font-medium">Pain Points</p>
+                      {bp.painPoints?.map((p: string, j: number) => (
+                        <p key={j} className="text-[11px] text-text-muted mb-1">&#8226; {p}</p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-emerald-400 uppercase tracking-wider mb-1.5 font-medium">Decision Factors</p>
+                      {bp.decisionFactors?.map((d: string, j: number) => (
+                        <p key={j} className="text-[11px] text-text-muted mb-1">&#8226; {d}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* positioning map */}
+          {analysisResult.positioningMap && (
+            <div className="glass-card p-4 border border-violet-500/20">
+              <h4 className="text-sm font-semibold text-text-primary mb-3">Competitive Positioning</h4>
+              <div className="relative bg-space-800 rounded-lg p-6 min-h-[280px]">
+                {/* axes */}
+                <div className="absolute left-6 top-6 bottom-12 w-px bg-card-border" />
+                <div className="absolute left-6 right-6 bottom-12 h-px bg-card-border" />
+                <p className="absolute left-0 top-1/2 -rotate-90 text-[10px] text-text-muted font-medium origin-center -translate-x-2 whitespace-nowrap">{analysisResult.positioningMap.axes?.y}</p>
+                <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-text-muted font-medium whitespace-nowrap">{analysisResult.positioningMap.axes?.x}</p>
+
+                {/* plot players */}
+                {analysisResult.positioningMap.players?.map((p: { name: string; x: string; y: string }, i: number) => {
+                  const xPos = p.x === "low" ? "20%" : p.x === "medium" ? "50%" : "80%";
+                  const yPos = p.y === "low" ? "75%" : p.y === "medium" ? "45%" : "15%";
+                  return (
+                    <div key={i} className="absolute" style={{ left: xPos, top: yPos, transform: "translate(-50%, -50%)" }}>
+                      <div className="w-3 h-3 rounded-full bg-slate-500 mb-0.5 mx-auto" />
+                      <p className="text-[10px] text-text-muted text-center whitespace-nowrap">{p.name}</p>
+                    </div>
+                  );
+                })}
+
+                {/* our position */}
+                {analysisResult.positioningMap.ourPosition && (
+                  <div className="absolute" style={{
+                    left: analysisResult.positioningMap.ourPosition.x === "low" ? "20%" : analysisResult.positioningMap.ourPosition.x === "medium" ? "50%" : "80%",
+                    top: analysisResult.positioningMap.ourPosition.y === "low" ? "75%" : analysisResult.positioningMap.ourPosition.y === "medium" ? "45%" : "15%",
+                    transform: "translate(-50%, -50%)",
+                  }}>
+                    <div className="w-4 h-4 rounded-full bg-violet-500 mb-0.5 mx-auto ring-2 ring-violet-400/50" />
+                    <p className="text-[10px] text-violet-400 text-center font-bold whitespace-nowrap">{profile?.companyName || "Us"}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* recommendation */}
+          <div className="glass-card p-4 border border-violet-500/20">
+            <h4 className="text-xs text-violet-400 uppercase tracking-wider font-medium mb-2">Entry Recommendation</h4>
+            <p className="text-sm text-text-secondary leading-relaxed">{analysisResult.entryRecommendation}</p>
+          </div>
+        </div>
+      )}
+
+      {/* empty state */}
+      {!isSearching && prospects.length === 0 && !analysisResult && (
+        <EmptyWorkspace message="Click a tool above to get started. Search for Leads uses Apollo.io, other tools use AI analysis." />
       )}
     </div>
   );
