@@ -37,7 +37,6 @@ interface ActivityLogProps {
 export default function ActivityLog({ events }: ActivityLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // auto-scroll to bottom when new events arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -45,41 +44,31 @@ export default function ActivityLog({ events }: ActivityLogProps) {
   }, [events]);
 
   return (
-    <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">Activity Log</h3>
+    <div className="glass-card flex flex-col h-full">
+      <div className="px-4 py-3 border-b border-card-border">
+        <h3 className="text-sm font-semibold text-text-primary">Activity Log</h3>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[500px]">
         {events.length === 0 && (
-          <p className="text-sm text-[var(--muted)] text-center py-8">
+          <p className="text-sm text-text-muted text-center py-8">
             Waiting for pipeline to start...
           </p>
         )}
 
         {events.map((event, i) => (
-          <div
-            key={i}
-            className="flex items-start gap-2 text-sm animate-in slide-in-from-bottom-2"
-          >
-            {/* status dot */}
+          <div key={i} className="flex items-start gap-2 text-sm">
             <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${STATUS_DOT[event.status] || STATUS_DOT.idle}`} />
-
-            {/* agent icon */}
-            <span className={`flex-shrink-0 mt-0.5 ${AGENT_COLORS[event.agent] || "text-slate-400"}`}>
+            <span className={`flex-shrink-0 mt-0.5 ${AGENT_COLORS[event.agent] || "text-text-muted"}`}>
               {AGENT_ICONS[event.agent] || <Bot size={14} />}
             </span>
-
-            {/* message */}
             <div className="flex-1 min-w-0">
-              <span className={`font-medium ${AGENT_COLORS[event.agent] || "text-slate-400"}`}>
+              <span className={`font-medium ${AGENT_COLORS[event.agent] || "text-text-muted"}`}>
                 {event.agent.charAt(0).toUpperCase() + event.agent.slice(1)}:
               </span>{" "}
-              <span className="text-slate-300">{event.message}</span>
+              <span className="text-text-secondary">{event.message}</span>
             </div>
-
-            {/* timestamp */}
-            <span className="text-xs text-[var(--muted)] flex-shrink-0">
+            <span className="text-xs text-text-muted flex-shrink-0">
               {new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
           </div>

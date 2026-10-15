@@ -11,7 +11,6 @@ const STAGES: { key: PipelineStage; label: string; icon: React.ReactNode }[] = [
   { key: "supporting", label: "Support", icon: <Headphones size={18} /> },
 ];
 
-// which stages are considered "complete" when the pipeline is at a given stage
 const STAGE_ORDER: PipelineStage[] = [
   "idle", "researching", "emailing", "calling", "selling", "closing", "supporting", "complete",
 ];
@@ -33,33 +32,31 @@ export default function PipelineView({ currentStage }: PipelineViewProps) {
 
         return (
           <div key={stage.key} className="flex items-center">
-            {/* node */}
             <div className="flex flex-col items-center gap-2">
               <div
                 className={`
                   relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-500
                   ${isDone ? "bg-emerald-500/20 border-emerald-500 text-emerald-400" : ""}
-                  ${isActive ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 pipeline-glow" : ""}
-                  ${isIdle ? "bg-[var(--card)] border-[var(--border)] text-[var(--muted)]" : ""}
+                  ${isActive ? "bg-brand-blue/20 border-brand-blue text-brand-glow pipeline-glow" : ""}
+                  ${isIdle ? "bg-card-bg border-card-border text-text-muted" : ""}
                 `}
               >
                 {isDone ? <Check size={18} /> : stage.icon}
               </div>
               <span
                 className={`text-xs font-medium transition-colors ${
-                  isDone ? "text-emerald-400" : isActive ? "text-indigo-400" : "text-[var(--muted)]"
+                  isDone ? "text-emerald-400" : isActive ? "text-brand-glow" : "text-text-muted"
                 }`}
               >
                 {stage.label}
               </span>
             </div>
 
-            {/* connector line */}
             {i < STAGES.length - 1 && (
               <div className="flex items-center px-1 -mt-6">
                 <div
                   className={`w-12 h-0.5 transition-colors duration-500 ${
-                    isDone ? "bg-emerald-500" : isActive ? "bg-indigo-500" : "bg-[var(--border)]"
+                    isDone ? "bg-emerald-500" : isActive ? "bg-brand-blue" : "bg-card-border"
                   }`}
                 />
               </div>

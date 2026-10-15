@@ -1,8 +1,15 @@
-// ── Resend email client ──
+// ── Resend email client (lazy-initialized to avoid build-time crashes) ──
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+let _resend: Resend | null = null;
+
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+  }
+  return _resend;
+}
 
 interface SendEmailParams {
   to: string;
@@ -12,7 +19,7 @@ interface SendEmailParams {
 }
 
 export async function sendEmail({ to, subject, html, from }: SendEmailParams) {
-  const result = await resend.emails.send({
+  const result = await getResend().emails.send({
     from: from || process.env.RESEND_FROM_EMAIL || "AcquireAI <onboarding@resend.dev>",
     to,
     subject,
@@ -22,7 +29,6 @@ export async function sendEmail({ to, subject, html, from }: SendEmailParams) {
   return result;
 }
 
-// format a plain text email body into branded HTML
 export function formatEmailHTML(body: string, companyName: string): string {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">

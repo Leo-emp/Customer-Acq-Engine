@@ -19,10 +19,10 @@ function ScoreBar({ score }: { score: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+      <div className="w-16 h-1.5 bg-space-700 rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
       </div>
-      <span className="text-xs text-[var(--muted)] w-6">{score}</span>
+      <span className="text-xs text-text-muted w-6">{score}</span>
     </div>
   );
 }
@@ -37,17 +37,17 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
   if (prospects.length === 0) return null;
 
   return (
-    <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] overflow-hidden">
-      <div className="px-4 py-3 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold">
-          Prospects <span className="text-[var(--muted)] font-normal">({prospects.length})</span>
+    <div className="glass-card overflow-hidden">
+      <div className="px-4 py-3 border-b border-card-border">
+        <h3 className="text-sm font-semibold text-text-primary">
+          Prospects <span className="text-text-muted font-normal">({prospects.length})</span>
         </h3>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)] text-[var(--muted)] text-xs">
+            <tr className="border-b border-card-border text-text-muted text-xs">
               <th className="text-left px-4 py-2 font-medium">Score</th>
               <th className="text-left px-4 py-2 font-medium">Company</th>
               <th className="text-left px-4 py-2 font-medium">Contact</th>
@@ -66,24 +66,16 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   key={prospect.id}
                   onClick={() => onSelect?.(prospect)}
                   className={`
-                    border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer
-                    ${isActive ? "bg-indigo-500/10 border-l-2 border-l-indigo-500" : ""}
+                    border-b border-card-border hover:bg-space-700 transition-colors cursor-pointer
+                    ${isActive ? "bg-brand-blue/10 border-l-2 border-l-brand-blue" : ""}
                   `}
                 >
-                  <td className="px-4 py-3">
-                    <ScoreBar score={prospect.score} />
-                  </td>
+                  <td className="px-4 py-3"><ScoreBar score={prospect.score} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-[var(--foreground)]">{prospect.companyName}</span>
+                      <span className="font-medium text-text-primary">{prospect.companyName}</span>
                       {prospect.website && (
-                        <a
-                          href={prospect.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-[var(--muted)] hover:text-indigo-400"
-                        >
+                        <a href={prospect.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-text-muted hover:text-brand-glow">
                           <ExternalLink size={12} />
                         </a>
                       )}
@@ -91,16 +83,14 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   </td>
                   <td className="px-4 py-3">
                     <div>
-                      <span className="text-[var(--foreground)]">{prospect.contactName}</span>
-                      <div className="text-xs text-[var(--muted)]">{prospect.email}</div>
+                      <span className="text-text-primary">{prospect.contactName}</span>
+                      <div className="text-xs text-text-muted">{prospect.email}</div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[var(--muted)]">{prospect.industry}</td>
-                  <td className="px-4 py-3 text-[var(--muted)] max-w-[200px] truncate">{prospect.fitReason}</td>
+                  <td className="px-4 py-3 text-text-muted">{prospect.industry}</td>
+                  <td className="px-4 py-3 text-text-muted max-w-[200px] truncate">{prospect.fitReason}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
-                      {badge.label}
-                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>{badge.label}</span>
                   </td>
                 </tr>
               );

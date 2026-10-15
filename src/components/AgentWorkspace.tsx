@@ -76,19 +76,17 @@ export default function AgentWorkspace({
 }: AgentWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<AgentRole>("research");
 
-  // get latest status for each agent
   const getAgentStatus = (role: AgentRole): AgentStatus => {
     const agentEvents = events.filter((e) => e.agent === role);
     return (agentEvents[agentEvents.length - 1]?.status || "idle") as AgentStatus;
   };
 
-  // get events for the active agent
   const activeEvents = events.filter((e) => e.agent === activeTab);
 
   return (
-    <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] overflow-hidden">
+    <div className="glass-card overflow-hidden">
       {/* tab bar */}
-      <div className="flex border-b border-[var(--border)] overflow-x-auto">
+      <div className="flex border-b border-card-border overflow-x-auto">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.role;
           const status = getAgentStatus(tab.role);
@@ -103,7 +101,7 @@ export default function AgentWorkspace({
                 border-b-2 whitespace-nowrap
                 ${isActive
                   ? `${tab.activeText} ${tab.activeBg} ${tab.activeBorder}`
-                  : "text-[var(--muted)] border-transparent hover:text-slate-300 hover:bg-slate-800/50"
+                  : "text-text-muted border-transparent hover:text-text-secondary hover:bg-space-700/50"
                 }
               `}
             >
@@ -117,14 +115,13 @@ export default function AgentWorkspace({
 
       {/* tab content */}
       <div className="p-5 min-h-[400px]">
-        {/* agent event log for this agent */}
         {activeEvents.length > 0 && (
           <div className="mb-5 space-y-1.5 max-h-40 overflow-y-auto">
             {activeEvents.map((event, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
                 <span className={`w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 ${STATUS_DOT[event.status]}`} />
-                <span className="text-slate-400">{event.message}</span>
-                <span className="text-slate-600 ml-auto flex-shrink-0">
+                <span className="text-text-secondary">{event.message}</span>
+                <span className="text-text-muted ml-auto flex-shrink-0">
                   {new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </span>
               </div>
@@ -132,22 +129,16 @@ export default function AgentWorkspace({
           </div>
         )}
 
-        {/* RESEARCH TAB */}
         {activeTab === "research" && (
           <div>
             {prospects.length > 0 ? (
-              <LeadList
-                prospects={prospects}
-                activeProspectId={activeProspectId}
-                onSelect={onSelectProspect}
-              />
+              <LeadList prospects={prospects} activeProspectId={activeProspectId} onSelect={onSelectProspect} />
             ) : (
               <EmptyState message="Scout will research and qualify leads from web search results." />
             )}
           </div>
         )}
 
-        {/* OUTREACH TAB */}
         {activeTab === "outreach" && (
           <div className="space-y-6">
             {emails.length > 0 ? (
@@ -155,24 +146,16 @@ export default function AgentWorkspace({
             ) : (
               <EmptyState message="Reach will draft personalized emails and prepare voice call scripts for each prospect." />
             )}
-
             {callProspect && (
-              <VoiceCall
-                prospect={callProspect}
-                callScript={callScript}
-                agentId={callAgentId}
-                onCallComplete={onCallComplete}
-              />
+              <VoiceCall prospect={callProspect} callScript={callScript} agentId={callAgentId} onCallComplete={onCallComplete} />
             )}
           </div>
         )}
 
-        {/* SALES TAB */}
         {activeTab === "sales" && (
           <div>
             {callRecord ? (
               <div className="space-y-4">
-                {/* outcome badge */}
                 <div className={`rounded-xl border p-5 ${
                   callRecord.outcome === "closed" ? "bg-emerald-500/5 border-emerald-500/20"
                     : callRecord.outcome === "interested" ? "bg-blue-500/5 border-blue-500/20"
@@ -188,17 +171,16 @@ export default function AgentWorkspace({
                     }`}>
                       {callRecord.outcome}
                     </span>
-                    <h3 className="text-sm font-semibold">Deal Outcome</h3>
+                    <h3 className="text-sm font-semibold text-text-primary">Deal Outcome</h3>
                   </div>
-                  <p className="text-sm text-slate-300 mb-3">{callRecord.summary}</p>
-                  <p className="text-xs text-[var(--muted)]">Next: {callRecord.nextAction}</p>
+                  <p className="text-sm text-text-secondary mb-3">{callRecord.summary}</p>
+                  <p className="text-xs text-text-muted">Next: {callRecord.nextAction}</p>
                 </div>
 
-                {/* transcript */}
                 {callRecord.transcript && (
-                  <div className="bg-slate-900/50 rounded-lg p-4">
-                    <p className="text-xs text-[var(--muted)] font-medium mb-2 uppercase tracking-wider">Call Transcript</p>
-                    <div className="text-sm text-slate-400 whitespace-pre-line max-h-60 overflow-y-auto">
+                  <div className="bg-space-800 rounded-lg p-4">
+                    <p className="text-xs text-text-muted font-medium mb-2 uppercase tracking-wider">Call Transcript</p>
+                    <div className="text-sm text-text-secondary whitespace-pre-line max-h-60 overflow-y-auto">
                       {callRecord.transcript}
                     </div>
                   </div>
@@ -210,7 +192,6 @@ export default function AgentWorkspace({
           </div>
         )}
 
-        {/* ADMIN TAB */}
         {activeTab === "admin" && (
           <div>
             {invoice ? (
@@ -221,16 +202,10 @@ export default function AgentWorkspace({
           </div>
         )}
 
-        {/* SUPPORT TAB */}
         {activeTab === "support" && (
           <div>
             {callProspect ? (
-              <SupportChat
-                prospect={callProspect}
-                deal={callRecord}
-                invoice={invoice}
-                productDescription={productDescription}
-              />
+              <SupportChat prospect={callProspect} deal={callRecord} invoice={invoice} productDescription={productDescription} />
             ) : (
               <EmptyState message="Assist will provide post-sale customer support with full deal context." />
             )}
@@ -244,7 +219,7 @@ export default function AgentWorkspace({
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="text-center py-12">
-      <p className="text-sm text-[var(--muted)] max-w-sm mx-auto">{message}</p>
+      <p className="text-sm text-text-muted max-w-sm mx-auto">{message}</p>
     </div>
   );
 }
