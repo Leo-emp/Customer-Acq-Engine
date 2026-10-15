@@ -1,234 +1,861 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import Sidebar from "@/components/Sidebar";
-import type { ViewMode } from "@/components/Sidebar";
-import AgentPage from "@/components/AgentPage";
-import OverviewDashboard from "@/components/OverviewDashboard";
-import BrandBrain from "@/components/BrandBrain";
-import SetupModal from "@/components/SetupModal";
-import type { CompanyProfile } from "@/lib/store";
-import type {
-  PipelineStage,
-  AgentEvent,
-  AgentRole,
-  Prospect,
-  EmailDraft,
-  CallRecord,
-  Invoice,
-} from "@/lib/types";
+// ── AcquireAI Landing Page ──
+// # Editorial, premium dark aesthetic inspired by dotsstudio.io
+// # Conversion goal: sign up / start free
 
-export default function Home() {
-  const [profile, setProfile] = useState<CompanyProfile | null>(null);
-  const [showSetup, setShowSetup] = useState(false);
-  const [stage, setStage] = useState<PipelineStage>("idle");
-  const [isRunning, setIsRunning] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [prospects, setProspects] = useState<Prospect[]>([]);
-  const [emails, setEmails] = useState<EmailDraft[]>([]);
-  const [callRecord, setCallRecord] = useState<CallRecord | null>(null);
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [pdfDataUrl, setPdfDataUrl] = useState("");
-  const [activeProspectId, setActiveProspectId] = useState<string>();
-  const [callProspect, setCallProspect] = useState<Prospect | null>(null);
-  const [callScript, setCallScript] = useState("");
-  const [callAgentId, setCallAgentId] = useState("");
-  const [activeView, setActiveView] = useState<ViewMode>("overview");
-  const emailsRef = useRef<EmailDraft[]>([]);
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import {
+  ArrowRight,
+  Search,
+  Mail,
+  Phone,
+  FileText,
+  MessageCircle,
+  Zap,
+  Shield,
+  BarChart3,
+  Clock,
+  ChevronDown,
+  Menu,
+  X,
+  Bot,
+  Target,
+  TrendingUp,
+  Users,
+  Globe,
+  Sparkles,
+} from "lucide-react";
 
-  const handleSSEEvent = useCallback((data: { type: string; payload: Record<string, unknown> }) => {
-    switch (data.type) {
-      case "stage_change": setStage(data.payload.stage as PipelineStage); break;
-      case "agent_event":
-        setEvents((prev) => [...prev, { agent: data.payload.agent, status: data.payload.status, message: data.payload.message, timestamp: data.payload.timestamp } as AgentEvent]);
-        break;
-      case "prospects": setProspects(data.payload.prospects as Prospect[]); break;
-      case "email": {
-        const email = data.payload.email as EmailDraft;
-        emailsRef.current = [...emailsRef.current, email];
-        setEmails([...emailsRef.current]);
-        break;
-      }
-      case "call_ready":
-        setCallProspect(data.payload.prospect as Prospect);
-        setCallScript(data.payload.callScript as string);
-        setCallAgentId(data.payload.agentId as string);
-        setActiveProspectId((data.payload.prospect as Prospect).id);
-        break;
-      case "call": setCallRecord(data.payload.call as CallRecord); break;
-      case "invoice":
-        setInvoice(data.payload.invoice as Invoice);
-        setPdfDataUrl((data.payload.pdfDataUrl as string) || "");
-        break;
-      case "done": setIsRunning(false); break;
-      case "error":
-        setEvents((prev) => [...prev, { agent: "router", status: "error", message: data.payload.message as string, timestamp: Date.now() } as AgentEvent]);
-        break;
-    }
+// ── Fade-in wrapper ──
+function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 32 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: [0.25, 0.1, 0.25, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// ── Navigation ──
+function Nav() {
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const readSSEStream = useCallback(async (body: ReadableStream<Uint8Array>) => {
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try { handleSSEEvent(JSON.parse(line.slice(6))); } catch {}
-        }
-      }
-    }
-  }, [handleSSEEvent]);
-
-  const handleLaunch = useCallback(async (userPrompt: string) => {
-    setStage("idle");
-    setIsRunning(true);
-    setPrompt(userPrompt);
-    setEvents([]);
-    setProspects([]);
-    setEmails([]);
-    emailsRef.current = [];
-    setCallRecord(null);
-    setInvoice(null);
-    setPdfDataUrl("");
-    setCallProspect(null);
-    setCallScript("");
-    setActiveProspectId(undefined);
-    setActiveView("overview");
-
-    const fullPrompt = profile
-      ? `Company: ${profile.companyName}\nIndustry: ${profile.industry}\nProduct: ${profile.productDescription}\nValue Prop: ${profile.valueProposition}\nTarget Market: ${profile.targetMarket}\nKey Features: ${profile.keyFeatures?.join(", ")}\nPricing: ${profile.pricing}\nBrand Tone: ${profile.tone}\nSender: ${profile.senderName}\n\nGoal: ${userPrompt}`
-      : userPrompt;
-
-    try {
-      const res = await fetch("/api/orchestrate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, profile }),
-      });
-      if (!res.ok || !res.body) throw new Error("Pipeline failed");
-      await readSSEStream(res.body);
-    } catch {
-      setEvents((prev) => [...prev, { agent: "router" as const, status: "error" as const, message: "Failed to connect", timestamp: Date.now() }]);
-    } finally {
-      setIsRunning(false);
-    }
-  }, [profile, readSSEStream]);
-
-  const handleCallComplete = useCallback(async (transcript: string) => {
-    if (!callProspect) return;
-    setIsRunning(true);
-    try {
-      const res = await fetch("/api/orchestrate", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prospect: callProspect, transcript, emailBody: emails.find((e) => e.prospectId === callProspect.id)?.body || "", productDescription: prompt }),
-      });
-      if (res.ok && res.body) await readSSEStream(res.body);
-    } finally {
-      setIsRunning(false);
-    }
-  }, [callProspect, emails, prompt, readSSEStream]);
-
   return (
-    <div className="min-h-screen flex">
-      {/* setup modal overlay */}
-      {showSetup && !profile && (
-        <SetupModal
-          onComplete={(p) => { setProfile(p); setShowSetup(false); }}
-          onSkip={() => {
-            setProfile({ companyName: "Demo Corp", productDescription: "AI-powered SaaS platform", targetMarket: "B2B tech companies", senderName: "Alex", senderEmail: "", valueProposition: "Automate customer acquisition with AI", calendlyUrl: "", industry: "Technology", keyFeatures: ["AI Automation", "Lead Generation", "Email Outreach"], pricing: "Starting at $99/month", tone: "Professional and friendly" });
-            setShowSetup(false);
-          }}
-        />
-      )}
-
-      {/* sidebar — always visible */}
-      <Sidebar
-        activeView={activeView}
-        onSelectView={setActiveView}
-        events={events}
-        currentStage={stage}
-        companyName={profile?.companyName}
-        isRunning={isRunning}
-        hasProfile={!!profile}
-      />
-
-      {/* main content */}
-      <div className="flex-1 ml-64 min-h-screen">
-        {/* top bar */}
-        <header className="sticky top-0 z-30 bg-space-900/95 backdrop-blur-sm border-b border-card-border">
-          <div className="px-6 py-3 flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-text-primary">
-                {activeView === "overview" ? "Dashboard" : activeView === "brandBrain" ? "Brand Brain" : undefined}
-              </h1>
-              {profile && <p className="text-xs text-text-muted">{profile.companyName} — {profile.valueProposition}</p>}
-              {!profile && <p className="text-xs text-text-muted">Set up your Brand Brain to get started</p>}
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-space-900/90 backdrop-blur-xl border-b border-white/[0.06]" : ""}`}>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <div className="flex items-center justify-between h-16 md:h-20">
+          {/* wordmark */}
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-brand-blue flex items-center justify-center">
+              <Zap size={16} className="text-white" />
             </div>
-            <div className="flex items-center gap-3">
-              {isRunning && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-emerald-400 font-medium">Pipeline Active</span>
-                </div>
-              )}
-              {!profile && (
-                <button onClick={() => setActiveView("brandBrain")} className="px-4 py-1.5 bg-brand-blue hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-all cursor-pointer">
-                  Setup Brand Brain
-                </button>
-              )}
+            <span className="text-lg font-semibold tracking-tight text-text-primary">
+              Acquire<span className="text-brand-blue">AI</span>
+            </span>
+          </Link>
+
+          {/* desktop links */}
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#agents" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Agents</a>
+            <a href="#how-it-works" className="text-sm text-text-secondary hover:text-text-primary transition-colors">How It Works</a>
+            <a href="#pricing" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Pricing</a>
+            <a href="#faq" className="text-sm text-text-secondary hover:text-text-primary transition-colors">FAQ</a>
+          </div>
+
+          {/* desktop CTAs */}
+          <div className="hidden md:flex items-center gap-3">
+            <Link href="/signin" className="text-sm text-text-secondary hover:text-text-primary transition-colors px-4 py-2">
+              Sign In
+            </Link>
+            <Link href="/signup" className="text-sm font-medium text-white bg-brand-blue hover:bg-blue-500 px-5 py-2.5 rounded-lg transition-all">
+              Get Started Free
+            </Link>
+          </div>
+
+          {/* mobile toggle */}
+          <button onClick={() => setOpen(!open)} className="md:hidden p-2 text-text-secondary" aria-label="Toggle menu">
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </div>
+
+      {/* mobile menu */}
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="md:hidden bg-space-900/98 backdrop-blur-xl border-t border-white/[0.06] px-6 pb-6 pt-4"
+        >
+          <div className="flex flex-col gap-4">
+            <a href="#agents" onClick={() => setOpen(false)} className="text-sm text-text-secondary hover:text-text-primary">Agents</a>
+            <a href="#how-it-works" onClick={() => setOpen(false)} className="text-sm text-text-secondary hover:text-text-primary">How It Works</a>
+            <a href="#pricing" onClick={() => setOpen(false)} className="text-sm text-text-secondary hover:text-text-primary">Pricing</a>
+            <a href="#faq" onClick={() => setOpen(false)} className="text-sm text-text-secondary hover:text-text-primary">FAQ</a>
+            <div className="border-t border-white/[0.06] pt-4 flex flex-col gap-3">
+              <Link href="/signin" className="text-sm text-text-secondary text-center py-2">Sign In</Link>
+              <Link href="/signup" className="text-sm font-medium text-white bg-brand-blue px-5 py-2.5 rounded-lg text-center">Get Started Free</Link>
             </div>
           </div>
-        </header>
+        </motion.div>
+      )}
+    </nav>
+  );
+}
 
-        <main className="p-6">
-          {activeView === "overview" && (
-            <OverviewDashboard
-              profile={profile}
-              stage={stage}
-              isRunning={isRunning}
-              events={events}
-              prospects={prospects}
-              emails={emails}
-              callRecord={callRecord}
-              onLaunch={handleLaunch}
-              onSelectAgent={(role) => setActiveView(role)}
-            />
-          )}
-          {activeView === "brandBrain" && (
-            <BrandBrain profile={profile} onUpdateProfile={(p) => { setProfile(p); }} />
-          )}
-          {activeView !== "overview" && activeView !== "brandBrain" && (
-            <AgentPage
-              role={activeView}
-              events={events}
-              prospects={prospects}
-              emails={emails}
-              callRecord={callRecord}
-              invoice={invoice}
-              pdfDataUrl={pdfDataUrl}
-              callProspect={callProspect}
-              callScript={callScript}
-              callAgentId={callAgentId}
-              activeProspectId={activeProspectId}
-              productDescription={prompt}
-              profile={profile}
-              onSelectProspect={(p) => setActiveProspectId(p.id)}
-              onCallComplete={handleCallComplete}
-              onAddProspects={(p) => setProspects(prev => [...prev, ...p])}
-              onAddEmails={(e) => { emailsRef.current = [...emailsRef.current, ...e]; setEmails([...emailsRef.current]); }}
-              onAddEvent={(e) => setEvents(prev => [...prev, e])}
-            />
-          )}
-        </main>
+// ── Hero ──
+function Hero() {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const y = useTransform(scrollYProgress, [0, 0.5], [0, 60]);
+
+  return (
+    <section ref={ref} className="relative min-h-screen flex items-center overflow-hidden pt-20">
+      {/* background grid */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+        backgroundSize: "80px 80px",
+      }} />
+
+      {/* gradient accent */}
+      <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[120px]" />
+      <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-brand-blue/[0.03] rounded-full blur-[100px]" />
+
+      <motion.div style={{ opacity, y }} className="relative max-w-[1400px] mx-auto px-6 md:px-10 w-full">
+        <div className="grid lg:grid-cols-[1fr,0.8fr] gap-12 lg:gap-20 items-center">
+          {/* left — copy */}
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand-blue/20 bg-brand-blue/[0.06] mb-8"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse" />
+              <span className="text-xs font-medium text-brand-blue tracking-wide">AI-POWERED ACQUISITION</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-[clamp(2.5rem,6vw,5rem)] leading-[1.05] font-bold tracking-tight text-text-primary mb-6"
+            >
+              Five AI agents.<br />
+              <span className="text-brand-blue">One complete</span><br />
+              sales pipeline.
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="text-lg md:text-xl text-text-secondary leading-relaxed max-w-[520px] mb-10"
+            >
+              AcquireAI deploys autonomous agents that find your ideal customers,
+              write personalized outreach, make sales calls, close deals, and handle
+              support. From first touch to signed contract, without the headcount.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.35 }}
+              className="flex flex-wrap items-center gap-4"
+            >
+              <Link href="/signup" className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white font-medium px-7 py-3.5 rounded-xl text-base transition-all">
+                Start Acquiring Customers
+                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <a href="#how-it-works" className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary font-medium px-5 py-3.5 text-base transition-colors">
+                See How It Works
+                <ChevronDown size={16} />
+              </a>
+            </motion.div>
+
+            {/* trust bar */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="mt-14 flex items-center gap-6 text-xs text-text-muted"
+            >
+              <span className="flex items-center gap-1.5"><Shield size={14} className="text-emerald-500" /> SOC 2 Ready</span>
+              <span className="w-px h-4 bg-white/[0.08]" />
+              <span className="flex items-center gap-1.5"><Globe size={14} className="text-brand-blue" /> Real B2B Data</span>
+              <span className="w-px h-4 bg-white/[0.08]" />
+              <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-amber-400" /> Gemini AI</span>
+            </motion.div>
+          </div>
+
+          {/* right — agent visualization */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="hidden lg:block"
+          >
+            <div className="relative">
+              {/* terminal-style card */}
+              <div className="bg-space-800 border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
+                {/* title bar */}
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/[0.06]">
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+                  </div>
+                  <span className="text-[11px] text-text-muted font-mono ml-2">acquire-ai pipeline</span>
+                </div>
+
+                {/* agent rows */}
+                <div className="p-5 space-y-3">
+                  {[
+                    { icon: Search, label: "Scout", status: "Found 7 high-fit leads", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+                    { icon: Mail, label: "Reach", status: "3 personalized emails sent", color: "text-blue-400", bg: "bg-blue-400/10" },
+                    { icon: Phone, label: "Closer", status: "Call scheduled with CIO", color: "text-violet-400", bg: "bg-violet-400/10" },
+                    { icon: FileText, label: "Ops", status: "Invoice generated — $233K", color: "text-amber-400", bg: "bg-amber-400/10" },
+                    { icon: MessageCircle, label: "Assist", status: "Standing by for support", color: "text-emerald-400", bg: "bg-emerald-400/10" },
+                  ].map((agent, i) => (
+                    <motion.div
+                      key={agent.label}
+                      initial={{ opacity: 0, x: 16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.6 + i * 0.12 }}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors"
+                    >
+                      <div className={`w-9 h-9 rounded-lg ${agent.bg} flex items-center justify-center`}>
+                        <agent.icon size={16} className={agent.color} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-text-primary">{agent.label}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        </div>
+                        <p className="text-xs text-text-muted truncate">{agent.status}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* bottom bar */}
+                <div className="px-5 py-3 border-t border-white/[0.06] bg-emerald-500/[0.03]">
+                  <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Pipeline complete — 5/5 agents finished
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
+// ── Problem Section ──
+function Problem() {
+  const problems = [
+    {
+      stat: "68%",
+      label: "of sales reps miss quota every quarter",
+      detail: "Manual prospecting and generic outreach burns time without producing results.",
+    },
+    {
+      stat: "23hrs",
+      label: "per week spent on non-selling activities",
+      detail: "Data entry, research, follow-ups, scheduling, CRM updates. Your team sells 35% of the time.",
+    },
+    {
+      stat: "$200K+",
+      label: "annual cost per SDR before they close a single deal",
+      detail: "Salary, tools, training, management overhead. And turnover averages 34% per year.",
+    },
+  ];
+
+  return (
+    <section className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">The Problem</p>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
+            Your sales team is drowning in busywork while your pipeline stays empty.
+          </h2>
+        </Reveal>
+
+        <div className="grid md:grid-cols-3 gap-6 mt-16">
+          {problems.map((p, i) => (
+            <Reveal key={i} delay={i * 0.1}>
+              <div className="group p-8 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all">
+                <span className="text-5xl md:text-6xl font-bold text-text-primary tracking-tight">{p.stat}</span>
+                <p className="text-base font-medium text-text-primary mt-3 mb-3">{p.label}</p>
+                <p className="text-sm text-text-muted leading-relaxed">{p.detail}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
+  );
+}
+
+// ── Agents Section ──
+function Agents() {
+  const agents = [
+    {
+      icon: Search,
+      name: "Scout",
+      role: "Research Agent",
+      color: "text-cyan-400",
+      border: "hover:border-cyan-400/20",
+      bg: "bg-cyan-400/10",
+      description: "Searches Apollo.io for verified B2B contacts, scores leads with AI based on your ideal customer profile, maps competitors, and researches your entire market.",
+      capabilities: ["Lead discovery & scoring", "Competitor analysis", "Industry research", "Market mapping & TAM"],
+    },
+    {
+      icon: Mail,
+      name: "Reach",
+      role: "Outreach Agent",
+      color: "text-blue-400",
+      border: "hover:border-blue-400/20",
+      bg: "bg-blue-400/10",
+      description: "Drafts hyper-personalized cold emails using your brand voice and the prospect's context. Sends via Gmail or Resend, tracks opens, and writes follow-ups automatically.",
+      capabilities: ["Personalized email drafting", "Bulk send with tracking", "Automated follow-ups", "Brand voice consistency"],
+    },
+    {
+      icon: Phone,
+      name: "Closer",
+      role: "Sales Agent",
+      color: "text-violet-400",
+      border: "hover:border-violet-400/20",
+      bg: "bg-violet-400/10",
+      description: "Makes outbound voice calls via Twilio, conducts the sales conversation with AI, transcribes the call in real-time, and generates a deal analysis with next steps.",
+      capabilities: ["AI voice calls", "Deal analysis & scoring", "Transcript generation", "Next-action recommendations"],
+    },
+    {
+      icon: FileText,
+      name: "Ops",
+      role: "Admin Agent",
+      color: "text-amber-400",
+      border: "hover:border-amber-400/20",
+      bg: "bg-amber-400/10",
+      description: "Generates professional invoices and proposals, creates downloadable PDFs, tracks deal financials, and handles the operational side of closing so you can focus on selling.",
+      capabilities: ["Invoice generation", "PDF export", "Proposal creation", "Revenue tracking"],
+    },
+    {
+      icon: MessageCircle,
+      name: "Assist",
+      role: "Support Agent",
+      color: "text-emerald-400",
+      border: "hover:border-emerald-400/20",
+      bg: "bg-emerald-400/10",
+      description: "Answers prospect questions about pricing, timelines, and deal status using your brand context. Knows everything about the pipeline so responses are always accurate.",
+      capabilities: ["Contextual chat support", "Pricing guidance", "Deal status updates", "Objection handling"],
+    },
+  ];
+
+  return (
+    <section id="agents" className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">The Agents</p>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
+            Five autonomous agents that replace your entire outbound stack.
+          </h2>
+          <p className="text-lg text-text-secondary mt-5 max-w-2xl">
+            Each agent is specialized for one stage of customer acquisition.
+            Together, they run a complete pipeline from research to revenue, 24/7.
+          </p>
+        </Reveal>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-16">
+          {agents.map((agent, i) => (
+            <Reveal key={agent.name} delay={i * 0.08}>
+              <div className={`group h-full p-7 rounded-2xl bg-white/[0.015] border border-white/[0.05] ${agent.border} transition-all`}>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className={`w-11 h-11 rounded-xl ${agent.bg} flex items-center justify-center`}>
+                    <agent.icon size={20} className={agent.color} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-text-primary">{agent.name}</h3>
+                    <p className="text-xs text-text-muted">{agent.role}</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-text-secondary leading-relaxed mb-5">
+                  {agent.description}
+                </p>
+
+                <ul className="space-y-2">
+                  {agent.capabilities.map((cap) => (
+                    <li key={cap} className="flex items-center gap-2 text-xs text-text-muted">
+                      <span className={`w-1 h-1 rounded-full ${agent.color.replace("text-", "bg-")}`} />
+                      {cap}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          ))}
+
+          {/* orchestrator card */}
+          <Reveal delay={0.4}>
+            <div className="group h-full p-7 rounded-2xl bg-brand-blue/[0.04] border border-brand-blue/10 hover:border-brand-blue/20 transition-all">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-brand-blue/15 flex items-center justify-center">
+                  <Bot size={20} className="text-brand-blue" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-text-primary">Orchestrator</h3>
+                  <p className="text-xs text-brand-blue">Pipeline Brain</p>
+                </div>
+              </div>
+              <p className="text-sm text-text-secondary leading-relaxed mb-5">
+                The central intelligence that coordinates all five agents in sequence.
+                One prompt triggers the full pipeline: research, outreach, calls, operations,
+                and support, streaming real-time progress as each agent completes.
+              </p>
+              <div className="flex items-center gap-2 text-xs text-brand-blue font-medium">
+                <Zap size={12} />
+                Fully autonomous end-to-end pipeline
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── How It Works ──
+function HowItWorks() {
+  const steps = [
+    {
+      number: "01",
+      title: "Set up your Brand Brain",
+      description: "Enter your company name, product, target market, and value proposition. The AI learns your brand voice, pricing, and ideal customer profile in under two minutes.",
+      detail: "Paste your website URL and the AI extracts everything automatically.",
+    },
+    {
+      number: "02",
+      title: "Launch the pipeline",
+      description: "Type a goal like \"Find CRM buyers in healthcare\" and hit go. The Orchestrator dispatches Scout to search for real leads, then passes qualified contacts to Reach.",
+      detail: "Uses Apollo.io for verified, real-world B2B contact data.",
+    },
+    {
+      number: "03",
+      title: "Watch agents work in real-time",
+      description: "See each agent think, search, draft, and execute. Emails get sent, calls get made, transcripts get generated. You see every step as it happens, streamed live.",
+      detail: "Full transparency — no black-box automation.",
+    },
+    {
+      number: "04",
+      title: "Close and manage deals",
+      description: "Closer analyzes call outcomes with AI. Ops generates invoices and PDFs. Assist handles prospect questions. You get a complete pipeline from stranger to customer.",
+      detail: "Every artifact is downloadable: PDFs, transcripts, deal summaries.",
+    },
+  ];
+
+  return (
+    <section id="how-it-works" className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">How It Works</p>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
+            From zero to pipeline in four steps.
+          </h2>
+        </Reveal>
+
+        <div className="mt-16 space-y-0">
+          {steps.map((step, i) => (
+            <Reveal key={step.number} delay={i * 0.1}>
+              <div className="group grid md:grid-cols-[80px,1fr] gap-6 md:gap-10 py-10 border-b border-white/[0.04] last:border-0">
+                <span className="text-5xl font-bold text-white/[0.06] group-hover:text-brand-blue/20 transition-colors leading-none">
+                  {step.number}
+                </span>
+                <div>
+                  <h3 className="text-xl md:text-2xl font-semibold text-text-primary mb-3">{step.title}</h3>
+                  <p className="text-base text-text-secondary leading-relaxed max-w-2xl mb-2">
+                    {step.description}
+                  </p>
+                  <p className="text-sm text-text-muted">{step.detail}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Differentiators ──
+function Differentiators() {
+  const points = [
+    {
+      icon: Target,
+      title: "Real data, not simulations",
+      description: "Scout searches Apollo.io for actual verified B2B contacts. Every email, phone number, and company detail is real, not AI-generated placeholder data.",
+    },
+    {
+      icon: Bot,
+      title: "Actual AI agents, not workflows",
+      description: "Each agent uses Gemini AI to think, reason, and adapt. Scout scores leads based on your ICP. Reach writes emails that reference specific company details. Closer conducts real phone calls.",
+    },
+    {
+      icon: TrendingUp,
+      title: "Full pipeline, not point solution",
+      description: "Most tools handle one step. AcquireAI covers research, outreach, calls, operations, and support. One platform replaces your SDR team, email tool, dialer, invoicing, and help desk.",
+    },
+    {
+      icon: Clock,
+      title: "Minutes, not months",
+      description: "Traditional sales pipelines take 6-18 months to build. AcquireAI produces qualified leads, sent emails, and scheduled calls within minutes of setup.",
+    },
+    {
+      icon: Users,
+      title: "Brand Brain memory",
+      description: "Your company profile, tone, pricing, and ideal customer live in a persistent Brand Brain that every agent draws from. Outreach sounds like you, not a robot.",
+    },
+    {
+      icon: BarChart3,
+      title: "Complete transparency",
+      description: "Watch every agent work in real-time via server-sent events. Read every email before it sends. Review every call transcript. Download every PDF. Nothing happens behind a curtain.",
+    },
+  ];
+
+  return (
+    <section className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">Why AcquireAI</p>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
+            Not another CRM with AI sprinkled on top.
+          </h2>
+          <p className="text-lg text-text-secondary mt-5 max-w-2xl">
+            This is an autonomous acquisition engine. The agents don&apos;t suggest actions for you to take.
+            They take the actions.
+          </p>
+        </Reveal>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mt-16">
+          {points.map((point, i) => (
+            <Reveal key={i} delay={i * 0.08}>
+              <div>
+                <point.icon size={22} className="text-brand-blue mb-4" />
+                <h3 className="text-lg font-semibold text-text-primary mb-2">{point.title}</h3>
+                <p className="text-sm text-text-secondary leading-relaxed">{point.description}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Pricing ──
+function Pricing() {
+  return (
+    <section id="pricing" className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">Pricing</p>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
+            Start free. Scale when it works.
+          </h2>
+          <p className="text-lg text-text-secondary mt-5 max-w-2xl">
+            Every plan includes all five agents and the full pipeline.
+            The difference is volume.
+          </p>
+        </Reveal>
+
+        <div className="grid md:grid-cols-3 gap-5 mt-16">
+          {/* Starter */}
+          <Reveal delay={0}>
+            <div className="p-8 rounded-2xl bg-white/[0.015] border border-white/[0.05] hover:border-white/[0.1] transition-all">
+              <p className="text-sm font-medium text-text-muted mb-1">Starter</p>
+              <div className="flex items-baseline gap-1 mb-5">
+                <span className="text-4xl font-bold text-text-primary">$0</span>
+                <span className="text-sm text-text-muted">/month</span>
+              </div>
+              <p className="text-sm text-text-secondary mb-6">
+                Try the full platform with limited volume. No credit card required.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {["All 5 AI agents", "10 leads per search", "5 emails per day", "1 AI call per day", "Brand Brain setup", "PDF exports"].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/signup" className="block w-full text-center py-3 rounded-xl border border-white/[0.1] hover:border-white/[0.2] text-sm font-medium text-text-primary transition-all">
+                Get Started Free
+              </Link>
+            </div>
+          </Reveal>
+
+          {/* Pro */}
+          <Reveal delay={0.1}>
+            <div className="p-8 rounded-2xl bg-brand-blue/[0.04] border border-brand-blue/20 hover:border-brand-blue/30 transition-all relative">
+              <div className="absolute -top-3 left-8 px-3 py-1 bg-brand-blue rounded-full text-[10px] font-semibold text-white uppercase tracking-wider">
+                Most Popular
+              </div>
+              <p className="text-sm font-medium text-brand-blue mb-1">Pro</p>
+              <div className="flex items-baseline gap-1 mb-5">
+                <span className="text-4xl font-bold text-text-primary">$79</span>
+                <span className="text-sm text-text-muted">/month</span>
+              </div>
+              <p className="text-sm text-text-secondary mb-6">
+                Full-volume pipeline for growing teams closing real deals.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {["Unlimited lead searches", "Unlimited emails", "50 AI calls per month", "Priority API access", "Advanced deal analytics", "Competitor & market reports", "Email tracking & follow-ups", "Team collaboration"].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <span className="w-1 h-1 rounded-full bg-brand-blue" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/signup" className="block w-full text-center py-3 rounded-xl bg-brand-blue hover:bg-blue-500 text-sm font-medium text-white transition-all">
+                Start Pro Trial
+              </Link>
+            </div>
+          </Reveal>
+
+          {/* Enterprise */}
+          <Reveal delay={0.2}>
+            <div className="p-8 rounded-2xl bg-white/[0.015] border border-white/[0.05] hover:border-white/[0.1] transition-all">
+              <p className="text-sm font-medium text-text-muted mb-1">Enterprise</p>
+              <div className="flex items-baseline gap-1 mb-5">
+                <span className="text-4xl font-bold text-text-primary">Custom</span>
+              </div>
+              <p className="text-sm text-text-secondary mb-6">
+                Dedicated infrastructure, custom agents, and white-label deployment.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {["Everything in Pro", "Unlimited AI calls", "Custom agent training", "Dedicated API instance", "SSO & role-based access", "White-label option", "Priority support", "Custom integrations"].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <span className="w-1 h-1 rounded-full bg-violet-400" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href="mailto:hello@acquireai.com" className="block w-full text-center py-3 rounded-xl border border-white/[0.1] hover:border-white/[0.2] text-sm font-medium text-text-primary transition-all">
+                Contact Sales
+              </a>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── FAQ ──
+function FAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "What does AcquireAI actually do?",
+      a: "AcquireAI runs five specialized AI agents that handle the entire customer acquisition pipeline. Scout finds and qualifies leads from real B2B databases. Reach writes and sends personalized cold emails. Closer makes AI-powered sales calls and analyzes conversations. Ops generates invoices and proposals. Assist provides intelligent support chat. You give it a target market and it runs the full pipeline autonomously.",
+    },
+    {
+      q: "Is the lead data real or AI-generated?",
+      a: "Completely real. Scout searches Apollo.io, one of the largest B2B contact databases in the world. Every contact name, email, company, and phone number is a verified, real-world business contact. The AI scores and qualifies these leads based on your ideal customer profile, but the underlying data comes from a live database, not AI generation.",
+    },
+    {
+      q: "Does it actually send emails and make phone calls?",
+      a: "Yes. Reach sends emails through Gmail API or Resend (your choice) from your actual email address. Closer makes outbound voice calls through Twilio's telephony network. These are real communications to real people. You can review emails before they send and control call parameters. Nothing fires without your pipeline being active.",
+    },
+    {
+      q: "How is this different from tools like Apollo, Outreach, or Salesloft?",
+      a: "Those are point solutions that handle one step and require human operators. Apollo finds leads but doesn't email them. Outreach sends sequences but doesn't research prospects. None of them make phone calls. AcquireAI combines research, outreach, calling, operations, and support into one autonomous pipeline. One prompt replaces five tools and the humans operating them.",
+    },
+    {
+      q: "What AI model powers the agents?",
+      a: "Google Gemini. Each agent uses Gemini for reasoning, content generation, and decision-making. Scout uses it to score leads. Reach uses it to write personalized emails based on prospect context. Closer uses it to analyze call transcripts. Assist uses it for intelligent chat. The model runs server-side and your data stays private.",
+    },
+    {
+      q: "Can I customize the agent behavior?",
+      a: "Yes. The Brand Brain stores your company name, product description, value proposition, target market, pricing, and tone of voice. Every agent draws from this profile. Emails match your brand voice. Call scripts reference your actual product. Market research focuses on your real industry. Change the Brand Brain and every agent adapts.",
+    },
+    {
+      q: "How long does setup take?",
+      a: "Under two minutes. Enter your company URL and the AI extracts your brand profile automatically. Or fill in the fields manually: company name, what you sell, who you sell to, and your value proposition. Once the Brand Brain is set, launch the pipeline with a single prompt.",
+    },
+    {
+      q: "Is my data secure?",
+      a: "All data is stored in Turso (encrypted SQLite), API keys are environment variables that never touch the client, and the architecture is SOC 2-ready. No customer data is used for AI model training. Email credentials stay server-side. Call recordings are processed and stored securely.",
+    },
+  ];
+
+  return (
+    <section id="faq" className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[900px] mx-auto px-6 md:px-10">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">FAQ</p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-text-primary leading-tight">
+            Common questions, straight answers.
+          </h2>
+        </Reveal>
+
+        <div className="mt-12 divide-y divide-white/[0.05]">
+          {faqs.map((faq, i) => (
+            <Reveal key={i} delay={i * 0.05}>
+              <div className="py-5">
+                <button
+                  onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                  className="w-full flex items-start justify-between gap-4 text-left group cursor-pointer"
+                >
+                  <span className="text-base font-medium text-text-primary group-hover:text-brand-blue transition-colors">
+                    {faq.q}
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={`mt-1 shrink-0 text-text-muted transition-transform duration-200 ${openIndex === i ? "rotate-180" : ""}`}
+                  />
+                </button>
+                <motion.div
+                  initial={false}
+                  animate={{ height: openIndex === i ? "auto" : 0, opacity: openIndex === i ? 1 : 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <p className="text-sm text-text-secondary leading-relaxed pt-3 pr-8">
+                    {faq.a}
+                  </p>
+                </motion.div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Final CTA ──
+function FinalCTA() {
+  return (
+    <section className="py-28 md:py-36 border-t border-white/[0.04]">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10 text-center">
+        <Reveal>
+          <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-6">Ready?</p>
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-text-primary leading-tight max-w-3xl mx-auto">
+            Stop hiring SDRs.<br />
+            Start deploying agents.
+          </h2>
+          <p className="text-lg text-text-secondary mt-6 max-w-xl mx-auto">
+            Set up your Brand Brain, launch the pipeline, and watch five AI agents
+            build your sales pipeline while you focus on closing.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
+            <Link href="/signup" className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white font-medium px-8 py-4 rounded-xl text-base transition-all">
+              Get Started Free
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link href="/signin" className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary font-medium px-6 py-4 text-base transition-colors border border-white/[0.08] hover:border-white/[0.15] rounded-xl">
+              Sign In
+            </Link>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ── Footer ──
+function Footer() {
+  return (
+    <footer className="border-t border-white/[0.04] py-12">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+        <div className="grid md:grid-cols-[1.5fr,1fr,1fr,1fr] gap-10">
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-brand-blue flex items-center justify-center">
+                <Zap size={14} className="text-white" />
+              </div>
+              <span className="text-base font-semibold text-text-primary">
+                Acquire<span className="text-brand-blue">AI</span>
+              </span>
+            </div>
+            <p className="text-sm text-text-muted leading-relaxed max-w-xs">
+              AI-powered customer acquisition engine. Five autonomous agents, one complete pipeline.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Product</p>
+            <ul className="space-y-2.5">
+              <li><a href="#agents" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Agents</a></li>
+              <li><a href="#how-it-works" className="text-sm text-text-secondary hover:text-text-primary transition-colors">How It Works</a></li>
+              <li><a href="#pricing" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Pricing</a></li>
+              <li><a href="#faq" className="text-sm text-text-secondary hover:text-text-primary transition-colors">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Platform</p>
+            <ul className="space-y-2.5">
+              <li><Link href="/dashboard" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Dashboard</Link></li>
+              <li><Link href="/signup" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Sign Up</Link></li>
+              <li><Link href="/signin" className="text-sm text-text-secondary hover:text-text-primary transition-colors">Sign In</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Legal</p>
+            <ul className="space-y-2.5">
+              <li><span className="text-sm text-text-muted">Privacy Policy</span></li>
+              <li><span className="text-sm text-text-muted">Terms of Service</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-12 pt-6 border-t border-white/[0.04] flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-text-muted">&copy; 2026 AcquireAI. All rights reserved.</p>
+          <p className="text-xs text-text-muted">Powered by Gemini AI, Apollo.io, Twilio</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ── Page ──
+export default function LandingPage() {
+  return (
+    <>
+      <Nav />
+      <Hero />
+      <Problem />
+      <Agents />
+      <HowItWorks />
+      <Differentiators />
+      <Pricing />
+      <FAQ />
+      <FinalCTA />
+      <Footer />
+    </>
   );
 }
