@@ -351,10 +351,6 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
   }, [quickActionTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const executeAction = async (action: string, searchQuery?: string) => {
-    if (!profile && action !== "leads") {
-      onAddEvent({ agent: "research", status: "error", message: "Set up Brand Brain first", timestamp: Date.now() });
-      return;
-    }
     setIsSearching(true);
     setActiveAction(action);
     setAnalysisResult(null);

@@ -1,8 +1,8 @@
 // ── Pre-cached demo responses for Salesforce live hackathon demo ──
-// # Set DEMO_MODE=true in env to use these instead of real API calls
+// # DEMO_MODE hardcoded to true for hackathon — uses cached responses
 // # Every response is comprehensive, structured, and realistic
 
-export const DEMO_MODE = process.env.DEMO_MODE === "true";
+export const DEMO_MODE = true;
 
 // ══════════════════════════════════════════════════════════
 // BRAND BRAIN — Salesforce company profile
