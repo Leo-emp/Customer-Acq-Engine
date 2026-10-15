@@ -2,7 +2,8 @@
 
 import { NextRequest } from "next/server";
 import { runPipeline, analyzeCallResult } from "@/agents/orchestrator";
-import { DEMO_MODE, DEMO_PROSPECTS, DEMO_EMAILS, DEMO_EMAIL_QA, DEMO_CALL_RECORD, DEMO_SALES_ANALYSIS, DEMO_INVOICE_FULL } from "@/lib/demo-data";
+import { DEMO_MODE, DEMO_PROSPECTS, DEMO_CALL_RECORD, DEMO_SALES_ANALYSIS, DEMO_INVOICE_FULL } from "@/lib/demo-data";
+import { DEMO_PIPELINE_EMAILS, DEMO_PIPELINE_QA } from "@/lib/demo-pipeline";
 import type { Prospect } from "@/lib/types";
 
 // # realistic delay for demo mode
@@ -55,7 +56,8 @@ async function runDemoPipeline(
   _companyName: string,
 ) {
   const prospects = DEMO_PROSPECTS;
-  const emails = DEMO_EMAILS.map((e) => ({
+  // # pipeline uses all 30 emails (separate from independent agent route's 3)
+  const emails = DEMO_PIPELINE_EMAILS.map((e) => ({
     ...e,
     body: e.body.replace("{senderName}", senderName),
   }));
@@ -80,46 +82,49 @@ async function runDemoPipeline(
   send({ type: "agent_event", payload: { agent: "outreach", status: "thinking", message: `Crafting personalized cold emails for top ${emails.length} prospects (first batch)...`, timestamp: Date.now() } });
   await wait(3000);
 
-  // # send emails one by one with delays
-  for (let i = 0; i < emails.length; i++) {
-    const prospect = prospects.find((p) => p.id === emails[i].prospectId);
-    send({ type: "agent_event", payload: { agent: "outreach", status: "working", message: `Drafting email ${i + 1}/${emails.length} for ${prospect?.contactName} at ${prospect?.companyName}...`, timestamp: Date.now() } });
+  // # send emails in batches of 5 with progress updates
+  for (let batch = 0; batch < emails.length; batch += 5) {
+    const end = Math.min(batch + 5, emails.length);
+    const batchEmails = emails.slice(batch, end);
+    const names = batchEmails.map(e => {
+      const p = prospects.find(p => p.id === e.prospectId);
+      return p?.companyName || e.to;
+    }).join(", ");
+
+    send({ type: "agent_event", payload: { agent: "outreach", status: "working", message: `Drafting emails ${batch + 1}-${end}/${emails.length}: ${names}...`, timestamp: Date.now() } });
     await wait(2000);
 
-    send({ type: "email", payload: { email: { ...emails[i] } } });
-    await wait(500);
+    // # stream each email in the batch
+    for (const email of batchEmails) {
+      send({ type: "email", payload: { email: { ...email } } });
+      await wait(200);
+    }
   }
 
   send({ type: "agent_event", payload: { agent: "outreach", status: "done", message: `${emails.length} emails drafted — passing to QA Agent for review`, timestamp: Date.now() } });
   await wait(1000);
 
   // ═══ STAGE 2.5: EMAIL QA ═══
-  send({ type: "agent_event", payload: { agent: "emailqa", status: "thinking", message: "Email QA Agent initializing — scanning all drafted emails...", timestamp: Date.now() } });
+  send({ type: "agent_event", payload: { agent: "emailqa", status: "thinking", message: `Email QA Agent initializing — scanning all ${emails.length} drafted emails...`, timestamp: Date.now() } });
   await wait(2000);
 
-  // # scan each email with progress
-  for (let i = 0; i < emails.length; i++) {
-    const qa = DEMO_EMAIL_QA[i];
-    send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `Scanning email ${i + 1}/${emails.length}: ${qa?.companyName || emails[i].to}...`, timestamp: Date.now() } });
-    await wait(3000);
+  // # scan in batches of 6 for realistic progress without 90s wait
+  const batchSize = 6;
+  for (let batch = 0; batch < emails.length; batch += batchSize) {
+    const end = Math.min(batch + batchSize, emails.length);
+    const batchQA = DEMO_PIPELINE_QA.slice(batch, end);
+    const companies = batchQA.map(q => q.companyName).join(", ");
+    send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `Scanning emails ${batch + 1}-${end}/${emails.length}: ${companies}...`, timestamp: Date.now() } });
+    await wait(2500);
   }
 
   // # report QA results
-  const approved = DEMO_EMAIL_QA.filter(r => r.verdict === "approved");
-  const flagged = DEMO_EMAIL_QA.filter(r => r.verdict !== "approved");
-  send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `QA complete: ${approved.length} approved, ${flagged.length} flagged — auto-sending approved emails...`, timestamp: Date.now() } });
+  const approved = DEMO_PIPELINE_QA.filter(r => r.verdict === "approved");
+  const flagged = DEMO_PIPELINE_QA.filter(r => r.verdict !== "approved");
+  send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `QA complete: ${approved.length} approved, ${flagged.length} need revision — auto-sending approved emails...`, timestamp: Date.now() } });
   await wait(2000);
 
-  // # auto-send approved emails
-  for (const qa of approved) {
-    const email = emails[qa.emailIndex];
-    if (email) {
-      send({ type: "email", payload: { email: { ...email, sentAt: new Date().toISOString() } } });
-      await wait(500);
-    }
-  }
-
-  send({ type: "agent_event", payload: { agent: "emailqa", status: "done", message: `${approved.length} emails approved & sent — ${flagged.length} held for review (${flagged.map(f => f.verdict.replace("_", " ")).join(", ")})`, timestamp: Date.now() } });
+  send({ type: "agent_event", payload: { agent: "emailqa", status: "done", message: `${approved.length}/${emails.length} emails approved & sent — ${flagged.length} held for personalization review`, timestamp: Date.now() } });
   await wait(1000);
 
   // ═══ STAGE 3: CLOSER — auto-dial + analyze call transcript ═══
