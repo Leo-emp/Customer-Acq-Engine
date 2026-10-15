@@ -198,125 +198,105 @@ function Hero() {
           </motion.div>
         </div>
 
-        {/* dashboard preview — large, prominent */}
+        {/* dashboard preview — compact, starts from tabs */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="mt-16 md:mt-20 relative"
+          className="mt-14 md:mt-16 relative max-w-5xl mx-auto"
         >
           {/* glow behind the card */}
-          <div className="absolute -inset-4 bg-brand-blue/[0.04] rounded-3xl blur-2xl" />
+          <div className="absolute -inset-3 bg-brand-blue/[0.04] rounded-3xl blur-2xl" />
 
-          {/* dashboard card */}
+          {/* dashboard card — no title bar, starts from agent tabs */}
           <div className="relative bg-space-800 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
-            {/* title bar */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+            {/* agent tabs row */}
+            <div className="flex items-center gap-0 border-b border-white/[0.06] overflow-x-auto">
+              {[
+                { icon: BarChart3, label: "Overview", active: true, color: "text-brand-blue" },
+                { icon: Search, label: "Scout", active: false, color: "text-cyan-400" },
+                { icon: Mail, label: "Reach", active: false, color: "text-blue-400" },
+                { icon: Phone, label: "Closer", active: false, color: "text-violet-400" },
+                { icon: FileText, label: "Ops", active: false, color: "text-amber-400" },
+                { icon: MessageCircle, label: "Assist", active: false, color: "text-emerald-400" },
+              ].map((tab) => (
+                <div
+                  key={tab.label}
+                  className={`flex items-center gap-2 px-5 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    tab.active
+                      ? "border-brand-blue text-brand-blue bg-brand-blue/[0.04]"
+                      : "border-transparent text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  <tab.icon size={14} className={tab.active ? tab.color : "text-text-muted"} />
+                  {tab.label}
                 </div>
-                <span className="text-[11px] text-text-muted font-mono">acquire-ai — pipeline dashboard</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+              ))}
+              <div className="ml-auto pr-4 flex items-center gap-1.5 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[10px] text-emerald-400 font-medium">LIVE</span>
               </div>
             </div>
 
-            {/* dashboard content — simulated UI */}
-            <div className="grid md:grid-cols-[220px,1fr] min-h-[400px] md:min-h-[480px]">
-              {/* sidebar */}
-              <div className="hidden md:block border-r border-white/[0.04] p-4 space-y-1">
-                <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-brand-blue/10 border border-brand-blue/20">
-                  <BarChart3 size={15} className="text-brand-blue" />
-                  <span className="text-xs font-medium text-brand-blue">Dashboard</span>
-                </div>
+            {/* stats row — big impressive numbers */}
+            <div className="p-4 md:p-5">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
                 {[
-                  { icon: Search, label: "Scout", color: "text-cyan-400" },
-                  { icon: Mail, label: "Reach", color: "text-blue-400" },
-                  { icon: Phone, label: "Closer", color: "text-violet-400" },
-                  { icon: FileText, label: "Ops", color: "text-amber-400" },
-                  { icon: MessageCircle, label: "Assist", color: "text-emerald-400" },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.02] transition-colors">
-                    <item.icon size={15} className={item.color} />
-                    <span className="text-xs text-text-secondary">{item.label}</span>
-                  </div>
+                  { label: "Leads Found", value: "2,847", sub: "↑ 312 this week", color: "text-cyan-400" },
+                  { label: "Emails Sent", value: "18,439", sub: "94.2% delivered", color: "text-blue-400" },
+                  { label: "Calls Made", value: "1,206", sub: "68% positive outcome", color: "text-violet-400" },
+                  { label: "Deals Closed", value: "142", sub: "$4.7M total revenue", color: "text-emerald-400" },
+                  { label: "Pipeline Value", value: "$12.8M", sub: "23 active deals", color: "text-amber-400" },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.7 + i * 0.08 }}
+                    className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                  >
+                    <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">{stat.label}</p>
+                    <p className={`text-lg md:text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">{stat.sub}</p>
+                  </motion.div>
                 ))}
-                <div className="border-t border-white/[0.04] my-3" />
-                <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.02] transition-colors">
-                  <Bot size={15} className="text-text-muted" />
-                  <span className="text-xs text-text-secondary">Brand Brain</span>
-                </div>
               </div>
 
-              {/* main area */}
-              <div className="p-5 md:p-6">
-                {/* top stats row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                  {[
-                    { label: "Leads Found", value: "7", sub: "+3 verified", color: "text-cyan-400" },
-                    { label: "Emails Sent", value: "3", sub: "100% delivered", color: "text-blue-400" },
-                    { label: "Calls Made", value: "1", sub: "CIO — interested", color: "text-violet-400" },
-                    { label: "Pipeline Value", value: "$233K", sub: "1 active deal", color: "text-amber-400" },
-                  ].map((stat) => (
-                    <div key={stat.label} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                      <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">{stat.label}</p>
-                      <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-                      <p className="text-[10px] text-text-muted mt-0.5">{stat.sub}</p>
+              {/* agent activity feed — compact */}
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Recent Agent Activity</p>
+              <div className="space-y-2">
+                {[
+                  { icon: Search, agent: "Scout", message: "Discovered 48 new enterprise leads in healthcare vertical — 41 verified emails", color: "text-cyan-400", bg: "bg-cyan-400/10", time: "2m ago" },
+                  { icon: Mail, agent: "Reach", message: "Batch sent 24 personalized emails to financial services prospects — 3 replies received", color: "text-blue-400", bg: "bg-blue-400/10", time: "5m ago" },
+                  { icon: Phone, agent: "Closer", message: "Call with Dr. Torres (MedVista) — outcome: interested, $250-400K budget confirmed", color: "text-violet-400", bg: "bg-violet-400/10", time: "12m ago" },
+                  { icon: FileText, agent: "Ops", message: "Generated 3 invoices totaling $687,400 — all PDFs exported and ready for delivery", color: "text-amber-400", bg: "bg-amber-400/10", time: "18m ago" },
+                ].map((event, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 1.0 + i * 0.12 }}
+                    className="flex items-start gap-3 p-2.5 rounded-lg bg-white/[0.015] border border-white/[0.03]"
+                  >
+                    <div className={`w-6 h-6 rounded-md ${event.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                      <event.icon size={12} className={event.color} />
                     </div>
-                  ))}
-                </div>
-
-                {/* agent activity feed */}
-                <div className="space-y-2.5">
-                  <p className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Agent Activity</p>
-                  {[
-                    { icon: Search, agent: "Scout", message: "Found 7 high-fit CRM prospects — 6 verified emails across healthcare, fintech, manufacturing", color: "text-cyan-400", bg: "bg-cyan-400/10", time: "2m ago" },
-                    { icon: Mail, agent: "Reach", message: "Sent personalized email to Dr. Rachel Torres at MedVista Health Systems", color: "text-blue-400", bg: "bg-blue-400/10", time: "1m ago" },
-                    { icon: Mail, agent: "Reach", message: "Sent personalized email to James Whitfield at Pinnacle Financial Group", color: "text-blue-400", bg: "bg-blue-400/10", time: "1m ago" },
-                    { icon: Phone, agent: "Closer", message: "Call completed with Dr. Torres — outcome: interested, budget $250-400K confirmed", color: "text-violet-400", bg: "bg-violet-400/10", time: "30s ago" },
-                    { icon: FileText, agent: "Ops", message: "Invoice INV-SF2026-001 generated — $233,200.00 for MedVista Health Systems", color: "text-amber-400", bg: "bg-amber-400/10", time: "just now" },
-                  ].map((event, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: 12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.4, delay: 0.8 + i * 0.15 }}
-                      className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.015] border border-white/[0.03]"
-                    >
-                      <div className={`w-7 h-7 rounded-lg ${event.bg} flex items-center justify-center shrink-0 mt-0.5`}>
-                        <event.icon size={13} className={event.color} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-text-primary">{event.agent}</span>
+                        <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                        <span className="text-[10px] text-text-muted ml-auto shrink-0">{event.time}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-text-primary">{event.agent}</span>
-                          <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                          <span className="text-[10px] text-text-muted ml-auto shrink-0">{event.time}</span>
-                        </div>
-                        <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed truncate md:whitespace-normal">{event.message}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                      <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed truncate md:whitespace-normal">{event.message}</p>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
-            </div>
-
-            {/* bottom status bar */}
-            <div className="px-5 py-2.5 border-t border-white/[0.06] bg-emerald-500/[0.03] flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Pipeline complete — 5/5 agents finished successfully
-              </div>
-              <span className="text-[10px] text-text-muted font-mono hidden md:block">Salesforce CRM Demo</span>
             </div>
           </div>
 
           {/* bottom fade */}
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-space-900 to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-space-900 to-transparent pointer-events-none rounded-b-2xl" />
         </motion.div>
       </div>
     </section>
