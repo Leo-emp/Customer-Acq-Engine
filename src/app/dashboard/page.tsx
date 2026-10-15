@@ -8,7 +8,7 @@ import OverviewDashboard from "@/components/OverviewDashboard";
 import BrandBrain from "@/components/BrandBrain";
 import SetupModal from "@/components/SetupModal";
 import type { CompanyProfile } from "@/lib/store";
-import { DEMO_MODE } from "@/lib/demo-data";
+import { DEMO_MODE, DEMO_BRAND_PROFILE } from "@/lib/demo-data";
 import type {
   PipelineStage,
   AgentEvent,
@@ -20,8 +20,40 @@ import type {
 } from "@/lib/types";
 
 export default function Home() {
-  // # Brand Brain: starts empty, but once extracted it persists in localStorage forever
+  // # demo mode: Brand Brain pre-configured with Salesforce so judges see it ready
+  // # non-demo: persists via localStorage after first extraction
   const [profile, setProfile] = useState<CompanyProfile | null>(() => {
+    if (DEMO_MODE) {
+      return {
+        companyName: DEMO_BRAND_PROFILE.companyName,
+        productDescription: DEMO_BRAND_PROFILE.productDescription,
+        targetMarket: DEMO_BRAND_PROFILE.targetMarket,
+        senderName: "Alex Chen",
+        senderEmail: "",
+        valueProposition: DEMO_BRAND_PROFILE.valueProposition,
+        calendlyUrl: "",
+        industry: DEMO_BRAND_PROFILE.industry,
+        keyFeatures: DEMO_BRAND_PROFILE.keyFeatures,
+        pricing: DEMO_BRAND_PROFILE.pricing,
+        tone: DEMO_BRAND_PROFILE.tone,
+        websiteUrl: "salesforce.com",
+        founded: DEMO_BRAND_PROFILE.founded,
+        headquarters: DEMO_BRAND_PROFILE.headquarters,
+        ceo: DEMO_BRAND_PROFILE.ceo,
+        employees: DEMO_BRAND_PROFILE.employees,
+        revenue: DEMO_BRAND_PROFILE.revenue,
+        customers: DEMO_BRAND_PROFILE.customers,
+        marketCap: DEMO_BRAND_PROFILE.marketCap,
+        stockTicker: DEMO_BRAND_PROFILE.stockTicker,
+        competitors: DEMO_BRAND_PROFILE.competitors,
+        marketPosition: DEMO_BRAND_PROFILE.marketPosition,
+        differentiators: DEMO_BRAND_PROFILE.differentiators,
+        idealCustomer: DEMO_BRAND_PROFILE.idealCustomer,
+        painPoints: DEMO_BRAND_PROFILE.painPoints,
+        website: DEMO_BRAND_PROFILE.website,
+        annualEvents: DEMO_BRAND_PROFILE.annualEvents,
+      } as CompanyProfile;
+    }
     try {
       const saved = typeof window !== "undefined" ? localStorage.getItem("brandProfile") : null;
       return saved ? JSON.parse(saved) : null;
