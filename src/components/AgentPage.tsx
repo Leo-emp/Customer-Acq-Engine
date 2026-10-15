@@ -241,6 +241,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             callRecord={callRecord}
             onAddEvent={onAddEvent}
             quickAction={quickAction}
+            profile={profile}
           />
         )}
 
@@ -324,7 +325,7 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
       const res = await fetch("/api/agents/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery }),
+        body: JSON.stringify({ query: searchQuery, profile }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -397,6 +398,7 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
           prospect,
           productDescription: profile.productDescription,
           senderName: profile.senderName,
+          profile,
         }),
       });
       const data = await res.json();
@@ -458,10 +460,11 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
   );
 }
 
-function SalesTool({ callRecord, onAddEvent, quickAction }: {
+function SalesTool({ callRecord, onAddEvent, quickAction, profile }: {
   callRecord: CallRecord | null;
   onAddEvent: (event: AgentEvent) => void;
   quickAction: string;
+  profile: CompanyProfile | null;
 }) {
   const [transcript, setTranscript] = useState("");
   const [prospectName, setProspectName] = useState("");
@@ -489,7 +492,7 @@ function SalesTool({ callRecord, onAddEvent, quickAction }: {
       const res = await fetch("/api/agents/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: transcript.trim(), prospectName: prospectName.trim() || "Prospect", companyName: companyName.trim() || "Company" }),
+        body: JSON.stringify({ transcript: transcript.trim(), prospectName: prospectName.trim() || "Prospect", companyName: companyName.trim() || "Company", profile }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -625,6 +628,7 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
           contactName: contactName.trim() || undefined,
           productDescription: dealDesc.trim() || profile?.productDescription || "Consulting services",
           dealSummary: dealDesc.trim() || undefined,
+          profile,
         }),
       });
       const data = await res.json();
@@ -712,6 +716,7 @@ function SupportTool({ callProspect, callRecord, invoice, productDescription, pr
       deal={callRecord}
       invoice={invoice}
       productDescription={productDescription || profile?.productDescription || ""}
+      profile={profile}
     />
   );
 }

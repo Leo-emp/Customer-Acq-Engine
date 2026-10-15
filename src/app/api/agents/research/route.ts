@@ -1,14 +1,20 @@
 import { NextRequest } from "next/server";
 import { researchProspects } from "@/agents/research";
+import { buildBrandContext } from "@/lib/brand-context";
 
 export async function POST(req: NextRequest) {
-  const { query } = await req.json();
+  const { query, profile } = await req.json();
   if (!query || typeof query !== "string") {
     return Response.json({ error: "query is required" }, { status: 400 });
   }
 
+  const brandCtx = buildBrandContext(profile);
+  const enrichedQuery = brandCtx
+    ? `${brandCtx}\n\nSearch Goal: ${query}`
+    : query;
+
   try {
-    const prospects = await researchProspects(query);
+    const prospects = await researchProspects(enrichedQuery);
     return Response.json({ prospects });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Research failed";

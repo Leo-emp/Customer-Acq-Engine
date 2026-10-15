@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { agentThinkJSON } from "@/lib/gemini";
 import { generateInvoicePDF } from "@/lib/pdf";
+import { buildBrandContext } from "@/lib/brand-context";
 import type { Invoice } from "@/lib/types";
 
 interface InvoiceInput {
@@ -8,19 +9,21 @@ interface InvoiceInput {
 }
 
 export async function POST(req: NextRequest) {
-  const { action, companyName, contactName, productDescription, dealSummary, manualItems } = await req.json();
+  const { action, companyName, contactName, productDescription, dealSummary, manualItems, profile } = await req.json();
+
+  const brandCtx = buildBrandContext(profile);
 
   try {
     if (action === "generate") {
-      if (!companyName || !productDescription) {
-        return Response.json({ error: "companyName and productDescription are required" }, { status: 400 });
+      if (!companyName) {
+        return Response.json({ error: "companyName is required" }, { status: 400 });
       }
 
       const output = await agentThinkJSON<InvoiceInput>(
-        `You are a business operations assistant. Generate realistic invoice line items for a product/service sale.
-        Create 2-4 line items. Currency is USD.
+        `You are a business operations assistant.${brandCtx ? ` You work for the company described below.\n\n${brandCtx}\n\n` : " "}Generate realistic invoice line items for a product/service sale.
+        Create 2-4 line items based on the seller's actual products, pricing, and services. Currency is USD.
         Return JSON: { "items": [{ "description": "...", "quantity": 1, "unitPrice": 999.00 }] }`,
-        `COMPANY: ${companyName}\nCONTACT: ${contactName || "N/A"}\nPRODUCT: ${productDescription}\nDEAL: ${dealSummary || "Standard deal"}`
+        `CLIENT COMPANY: ${companyName}\nCONTACT: ${contactName || "N/A"}\nPRODUCT SOLD: ${productDescription || profile?.productDescription || "Services"}\nDEAL CONTEXT: ${dealSummary || "Standard deal"}`
       );
 
       const items = manualItems || output.items;

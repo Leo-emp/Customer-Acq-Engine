@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { agentThinkJSON } from "@/lib/gemini";
 import { generateCallNotePDF } from "@/lib/pdf";
+import { buildBrandContext } from "@/lib/brand-context";
 import type { CallRecord, DealOutcome } from "@/lib/types";
 
 interface AnalysisOutput {
@@ -11,15 +12,17 @@ interface AnalysisOutput {
 }
 
 export async function POST(req: NextRequest) {
-  const { transcript, prospectId, prospectName, companyName } = await req.json();
+  const { transcript, prospectId, prospectName, companyName, profile } = await req.json();
 
   if (!transcript || typeof transcript !== "string") {
     return Response.json({ error: "transcript is required" }, { status: 400 });
   }
 
+  const brandCtx = buildBrandContext(profile);
+
   try {
     const result = await agentThinkJSON<AnalysisOutput>(
-      `You are a sales analyst. Analyze this call transcript or conversation and determine:
+      `You are a sales analyst.${brandCtx ? ` You work for the company described below.\n\n${brandCtx}\n\n` : " "}Analyze this call transcript or conversation and determine:
       1. Deal outcome: "closed" (they agreed to buy), "interested" (positive but not committed), "objection" (had concerns), "rejected" (said no)
       2. A summary of the conversation
       3. Recommended next action

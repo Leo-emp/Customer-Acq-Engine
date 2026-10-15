@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Headphones, Loader2 } from "lucide-react";
+import type { CompanyProfile } from "@/lib/store";
 import type { Prospect, CallRecord, Invoice } from "@/lib/types";
 
 interface ChatMessage {
@@ -14,9 +15,10 @@ interface SupportChatProps {
   deal: CallRecord | null;
   invoice: Invoice | null;
   productDescription: string;
+  profile?: CompanyProfile | null;
 }
 
-export default function SupportChat({ prospect, deal, invoice, productDescription }: SupportChatProps) {
+export default function SupportChat({ prospect, deal, invoice, productDescription, profile }: SupportChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +40,7 @@ export default function SupportChat({ prospect, deal, invoice, productDescriptio
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, prospect, deal, invoice, productDescription, chatHistory: messages }),
+        body: JSON.stringify({ message: userMessage, prospect, deal, invoice, productDescription, chatHistory: messages, profile }),
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply || data.error }]);
