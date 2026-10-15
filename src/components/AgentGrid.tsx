@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Mail, Phone, FileText, Headphones } from "lucide-react";
+import { Search, Mail, Phone, FileText, Headphones, ShieldCheck } from "lucide-react";
 import type { AgentEvent, AgentRole, AgentStatus } from "@/lib/types";
 
 interface AgentConfig {
@@ -17,6 +17,7 @@ interface AgentConfig {
 const AGENTS: AgentConfig[] = [
   { role: "research", name: "Scout", title: "Research Agent", icon: <Search size={22} />, gradient: "from-blue-500 to-cyan-500", borderColor: "border-blue-500/40", bgActive: "bg-blue-500/10", description: "Finds and qualifies leads" },
   { role: "outreach", name: "Reach", title: "Outreach Agent", icon: <Mail size={22} />, gradient: "from-amber-500 to-orange-500", borderColor: "border-amber-500/40", bgActive: "bg-amber-500/10", description: "Drafts emails & makes calls" },
+  { role: "emailqa", name: "QA", title: "Email QA Agent", icon: <ShieldCheck size={22} />, gradient: "from-purple-500 to-violet-500", borderColor: "border-purple-500/40", bgActive: "bg-purple-500/10", description: "Scans emails for quality" },
   { role: "sales", name: "Closer", title: "Sales Agent", icon: <Phone size={22} />, gradient: "from-emerald-500 to-green-500", borderColor: "border-emerald-500/40", bgActive: "bg-emerald-500/10", description: "Analyzes deals & follows up" },
   { role: "admin", name: "Ops", title: "Admin Agent", icon: <FileText size={22} />, gradient: "from-indigo-500 to-violet-500", borderColor: "border-indigo-500/40", bgActive: "bg-indigo-500/10", description: "Invoices & contracts" },
   { role: "support", name: "Assist", title: "Support Agent", icon: <Headphones size={22} />, gradient: "from-teal-500 to-cyan-500", borderColor: "border-teal-500/40", bgActive: "bg-teal-500/10", description: "Post-sale customer support" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Mail, Phone, FileText, Headphones } from "lucide-react";
+import { Search, Mail, Phone, FileText, Headphones, ShieldCheck } from "lucide-react";
 import LeadList from "./LeadList";
 import EmailPreview from "./EmailPreview";
 import VoiceCall from "./VoiceCall";
@@ -20,6 +20,7 @@ const AGENT_META: Record<AgentRole, { name: string; title: string; icon: React.R
   router: { name: "Router", title: "Orchestrator", icon: <Search size={20} />, color: "text-purple-400", gradient: "from-purple-500 to-pink-500" },
   research: { name: "Scout", title: "Research Agent", icon: <Search size={20} />, color: "text-blue-400", gradient: "from-blue-500 to-cyan-500" },
   outreach: { name: "Reach", title: "Outreach Agent", icon: <Mail size={20} />, color: "text-amber-400", gradient: "from-amber-500 to-orange-500" },
+  emailqa: { name: "QA", title: "Email QA Agent", icon: <ShieldCheck size={20} />, color: "text-purple-400", gradient: "from-purple-500 to-violet-500" },
   sales: { name: "Closer", title: "Sales Agent", icon: <Phone size={20} />, color: "text-emerald-400", gradient: "from-emerald-500 to-green-500" },
   admin: { name: "Ops", title: "Admin Agent", icon: <FileText size={20} />, color: "text-indigo-400", gradient: "from-indigo-500 to-violet-500" },
   support: { name: "Assist", title: "Support Agent", icon: <Headphones size={20} />, color: "text-teal-400", gradient: "from-teal-500 to-cyan-500" },

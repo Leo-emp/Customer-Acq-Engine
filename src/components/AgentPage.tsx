@@ -51,6 +51,16 @@ const AGENT_META: Record<string, AgentMeta> = {
     ],
     description: "Reach crafts personalized outreach for each prospect. Select a lead below and choose an action to execute.",
   },
+  emailqa: {
+    name: "QA", title: "Email QA Agent", icon: <ShieldCheck size={24} />, color: "text-purple-400", gradient: "from-purple-500 to-violet-500", borderColor: "border-purple-500/30",
+    capabilities: [
+      { label: "Scan all emails", action: "qa-scan" },
+      { label: "Check personalization", action: "personalization" },
+      { label: "Compliance review", action: "compliance" },
+      { label: "Tone analysis", action: "tone" },
+    ],
+    description: "QA Agent scans every drafted email for quality, personalization gaps, and confidential data leaks. Approved emails are auto-sent.",
+  },
   sales: {
     name: "Closer", title: "Sales Agent", icon: <Phone size={24} />, color: "text-emerald-400", gradient: "from-emerald-500 to-green-500", borderColor: "border-emerald-500/30",
     capabilities: [
@@ -240,6 +250,14 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             onAddEmails={onAddEmails}
             onAddEvent={onAddEvent}
             profile={profile}
+          />
+        )}
+
+        {role === "emailqa" && (
+          <EmailQAPanel
+            emails={emails}
+            onAddEmails={onAddEmails}
+            onAddEvent={onAddEvent}
           />
         )}
 
@@ -1079,11 +1097,6 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
         </div>
       )}
 
-      {/* ── EMAIL QA AGENT ── */}
-      {emails.length > 0 && (
-        <EmailQAPanel emails={emails} onAddEmails={onAddEmails} onAddEvent={onAddEvent} />
-      )}
-
       {callProspect && (
         <VoiceCall prospect={callProspect} callScript={callScript} agentId={callAgentId} onCallComplete={onCallComplete} />
       )}
@@ -1118,7 +1131,7 @@ function EmailQAPanel({ emails, onAddEmails, onAddEvent }: {
     setScanComplete(false);
     setQaResults([]);
     setAutoSentCount(0);
-    onAddEvent({ agent: "outreach", status: "working", message: "Email QA Agent scanning all drafted emails...", timestamp: Date.now() });
+    onAddEvent({ agent: "emailqa", status: "working", message: "Email QA Agent scanning all drafted emails...", timestamp: Date.now() });
 
     // # simulate 3-second scan per email with visual progress
     const totalEmails = Math.min(emails.length, 10);
@@ -1153,13 +1166,13 @@ function EmailQAPanel({ emails, onAddEmails, onAddEvent }: {
 
       const flagged = (data.results as EmailQAResult[]).filter(r => r.verdict !== "approved").length;
       onAddEvent({
-        agent: "outreach", status: "done",
+        agent: "emailqa", status: "done",
         message: `QA complete: ${approved.length} approved & auto-sent, ${flagged} flagged for review`,
         timestamp: Date.now(),
       });
       setScanComplete(true);
     } catch (err) {
-      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "QA scan failed", timestamp: Date.now() });
+      onAddEvent({ agent: "emailqa", status: "error", message: err instanceof Error ? err.message : "QA scan failed", timestamp: Date.now() });
     } finally {
       setIsScanning(false);
     }

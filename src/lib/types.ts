@@ -1,6 +1,6 @@
 // ── Core types for the AI acquisition engine ──
 
-export type AgentRole = "router" | "research" | "outreach" | "sales" | "admin" | "support";
+export type AgentRole = "router" | "research" | "outreach" | "emailqa" | "sales" | "admin" | "support";
 
 export type AgentStatus = "idle" | "thinking" | "working" | "done" | "error";
 

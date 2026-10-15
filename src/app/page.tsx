@@ -27,6 +27,7 @@ import {
   Users,
   Globe,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 
 // ── Fade-in wrapper ──
@@ -373,6 +374,16 @@ function Agents() {
       capabilities: ["Personalized email drafting", "Bulk send with tracking", "Automated follow-ups", "Brand voice consistency"],
     },
     {
+      icon: ShieldCheck,
+      name: "QA",
+      role: "Email QA Agent",
+      color: "text-purple-400",
+      border: "hover:border-purple-400/20",
+      bg: "bg-purple-400/10",
+      description: "Scans every drafted email before sending. Checks personalization depth, copy quality, tone match, and flags confidential data leaks. Approved emails auto-send; flagged ones get specific fix suggestions.",
+      capabilities: ["Quality scoring per email", "Confidential data detection", "Personalization audit", "Auto-send approved emails"],
+    },
+    {
       icon: Phone,
       name: "Closer",
       role: "Sales Agent",
@@ -410,7 +421,7 @@ function Agents() {
         <Reveal>
           <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">The Agents</p>
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
-            Five autonomous agents that replace your entire outbound stack.
+            Six autonomous agents that replace your entire outbound stack.
           </h2>
           <p className="text-lg text-text-secondary mt-5 max-w-2xl">
             Each agent is specialized for one stage of customer acquisition.

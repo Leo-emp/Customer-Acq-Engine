@@ -20,6 +20,7 @@ interface OverviewDashboardProps {
 const AGENT_CARDS: { role: AgentRole; name: string; title: string; gradient: string; desc: string }[] = [
   { role: "research", name: "Scout", title: "Research Agent", gradient: "from-blue-500 to-cyan-500", desc: "Finds & qualifies leads from web search" },
   { role: "outreach", name: "Reach", title: "Outreach Agent", gradient: "from-amber-500 to-orange-500", desc: "Drafts personalized emails & voice calls" },
+  { role: "emailqa", name: "QA", title: "Email QA Agent", gradient: "from-purple-500 to-violet-500", desc: "Scans emails for quality & compliance" },
   { role: "sales", name: "Closer", title: "Sales Agent", gradient: "from-emerald-500 to-green-500", desc: "Analyzes deals & classifies outcomes" },
   { role: "admin", name: "Ops", title: "Admin Agent", gradient: "from-indigo-500 to-violet-500", desc: "Generates invoices & contracts" },
   { role: "support", name: "Assist", title: "Support Agent", gradient: "from-teal-500 to-cyan-500", desc: "Post-sale customer support with context" },
