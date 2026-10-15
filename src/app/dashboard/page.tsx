@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import type { ViewMode } from "@/components/Sidebar";
 import AgentPage from "@/components/AgentPage";
@@ -8,7 +8,7 @@ import OverviewDashboard from "@/components/OverviewDashboard";
 import BrandBrain from "@/components/BrandBrain";
 import SetupModal from "@/components/SetupModal";
 import type { CompanyProfile } from "@/lib/store";
-import { DEMO_MODE, DEMO_BRAND_PROFILE } from "@/lib/demo-data";
+import { DEMO_MODE } from "@/lib/demo-data";
 import type {
   PipelineStage,
   AgentEvent,
@@ -20,40 +20,12 @@ import type {
 } from "@/lib/types";
 
 export default function Home() {
-  // # demo mode: Brand Brain always pre-configured with Salesforce profile
+  // # Brand Brain: starts empty, but once extracted it persists in localStorage forever
   const [profile, setProfile] = useState<CompanyProfile | null>(() => {
-    if (DEMO_MODE) {
-      return {
-        companyName: DEMO_BRAND_PROFILE.companyName,
-        productDescription: DEMO_BRAND_PROFILE.productDescription,
-        targetMarket: DEMO_BRAND_PROFILE.targetMarket,
-        senderName: "Alex Chen",
-        senderEmail: "",
-        valueProposition: DEMO_BRAND_PROFILE.valueProposition,
-        calendlyUrl: "",
-        industry: DEMO_BRAND_PROFILE.industry,
-        keyFeatures: DEMO_BRAND_PROFILE.keyFeatures,
-        pricing: DEMO_BRAND_PROFILE.pricing,
-        tone: DEMO_BRAND_PROFILE.tone,
-        websiteUrl: "salesforce.com",
-        founded: DEMO_BRAND_PROFILE.founded,
-        headquarters: DEMO_BRAND_PROFILE.headquarters,
-        ceo: DEMO_BRAND_PROFILE.ceo,
-        employees: DEMO_BRAND_PROFILE.employees,
-        revenue: DEMO_BRAND_PROFILE.revenue,
-        customers: DEMO_BRAND_PROFILE.customers,
-        marketCap: DEMO_BRAND_PROFILE.marketCap,
-        stockTicker: DEMO_BRAND_PROFILE.stockTicker,
-        competitors: DEMO_BRAND_PROFILE.competitors,
-        marketPosition: DEMO_BRAND_PROFILE.marketPosition,
-        differentiators: DEMO_BRAND_PROFILE.differentiators,
-        idealCustomer: DEMO_BRAND_PROFILE.idealCustomer,
-        painPoints: DEMO_BRAND_PROFILE.painPoints,
-        website: DEMO_BRAND_PROFILE.website,
-        annualEvents: DEMO_BRAND_PROFILE.annualEvents,
-      } as CompanyProfile;
-    }
-    return null;
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("brandProfile") : null;
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
   const [showSetup, setShowSetup] = useState(false);
   const [stage, setStage] = useState<PipelineStage>("idle");
@@ -72,6 +44,12 @@ export default function Home() {
   const [activeView, setActiveView] = useState<ViewMode>("overview");
   const emailsRef = useRef<EmailDraft[]>([]);
 
+  // # save Brand Brain to localStorage whenever it changes — persists across refreshes
+  useEffect(() => {
+    try {
+      if (profile) localStorage.setItem("brandProfile", JSON.stringify(profile));
+    } catch {}
+  }, [profile]);
 
   const handleSSEEvent = useCallback((data: { type: string; payload: Record<string, unknown> }) => {
     switch (data.type) {
