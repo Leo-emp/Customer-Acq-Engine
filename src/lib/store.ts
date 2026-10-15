@@ -1,6 +1,7 @@
 // ── Client-side state store for the pipeline ──
 
 export interface CompanyProfile {
+  id?: string; // # Turso DB id — present after first save
   companyName: string;
   productDescription: string;
   targetMarket: string;
@@ -12,4 +13,5 @@ export interface CompanyProfile {
   keyFeatures: string[];
   pricing: string;
   tone: string;
+  websiteUrl?: string;
 }

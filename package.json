@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@libsql/client": "^0.18.0",
     "framer-motion": "^14.2.0",
     "googleapis": "^186.0.0",
     "jspdf": "^4.2.1",

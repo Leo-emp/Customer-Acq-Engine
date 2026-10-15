@@ -4,6 +4,7 @@ import { researchProspects } from "./research";
 import { draftEmails, sendDraftedEmail, generateCallScript } from "./outreach";
 import { analyzeCall } from "./sales";
 import { generateInvoice } from "./admin";
+import { initDb, saveProspects, saveEmail } from "@/lib/db";
 import type {
   PipelineState,
   PipelineStage,
@@ -86,6 +87,17 @@ export async function runPipeline(
     );
     emit(onEvent, "prospects", { prospects });
 
+    // # persist prospects to Turso if company has a DB id
+    if (profile?.id && prospects.length > 0) {
+      try {
+        await initDb();
+        await saveProspects(profile.id, prospects);
+        agentEvent(onEvent, "research", "done", `${prospects.length} prospects saved to database`);
+      } catch {
+        // # non-fatal — pipeline continues even if DB save fails
+      }
+    }
+
     if (prospects.length === 0) {
       agentEvent(onEvent, "research", "error", "No prospects found. Try a different search.");
       emit(onEvent, "done", { state });
@@ -126,6 +138,19 @@ export async function runPipeline(
           const p = state.prospects.find((pr) => pr.id === draft.prospectId);
           if (p) p.status = "emailed";
           emit(onEvent, "email", { email: sent });
+
+          // # persist sent email to Turso
+          if (profile?.id) {
+            try {
+              await saveEmail(profile.id, {
+                prospectId: draft.prospectId,
+                to: draft.to,
+                subject: draft.subject,
+                body: draft.body,
+                sentAt: sent.sentAt,
+              });
+            } catch {}
+          }
         } catch {
           agentEvent(onEvent, "outreach", "error", `Failed to send to ${prospect?.contactName}`);
         }

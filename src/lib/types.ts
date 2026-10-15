@@ -22,12 +22,16 @@ export interface Prospect {
   id: string;
   companyName: string;
   contactName: string;
+  title?: string;
   email: string;
   emailVerified?: boolean;
   website: string;
   industry: string;
-  fitReason: string; // why they're a good lead
-  score: number; // 1-100
+  location?: string;
+  employeeCount?: number;
+  linkedinUrl?: string;
+  fitReason: string;
+  score: number;
   status: "new" | "emailed" | "opened" | "called" | "interested" | "closed" | "rejected";
 }
 

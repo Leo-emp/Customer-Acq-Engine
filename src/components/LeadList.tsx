@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ExternalLink, ShieldCheck, ShieldAlert, Link2, MapPin, Users } from "lucide-react";
 import type { Prospect } from "@/lib/types";
 
 const STATUS_BADGES: Record<string, { label: string; color: string }> = {
@@ -38,22 +38,31 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
 
   return (
     <div className="glass-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-card-border">
+      <div className="px-4 py-3 border-b border-card-border flex items-center justify-between">
         <h3 className="text-sm font-semibold text-text-primary">
           Prospects <span className="text-text-muted font-normal">({prospects.length})</span>
         </h3>
+        <div className="flex items-center gap-3 text-[11px] text-text-muted">
+          <span>{prospects.filter(p => p.emailVerified).length} verified</span>
+          <span>{prospects.filter(p => p.email && !p.emailVerified).length} unverified</span>
+          <span>{prospects.filter(p => !p.email).length} no email</span>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-card-border text-text-muted text-xs">
-              <th className="text-left px-4 py-2 font-medium">Score</th>
-              <th className="text-left px-4 py-2 font-medium">Company</th>
-              <th className="text-left px-4 py-2 font-medium">Contact</th>
-              <th className="text-left px-4 py-2 font-medium">Industry</th>
-              <th className="text-left px-4 py-2 font-medium">Fit</th>
-              <th className="text-left px-4 py-2 font-medium">Status</th>
+            <tr className="border-b border-card-border text-text-muted text-[11px] uppercase tracking-wider">
+              <th className="text-left px-4 py-2.5 font-medium">Score</th>
+              <th className="text-left px-4 py-2.5 font-medium">Contact</th>
+              <th className="text-left px-4 py-2.5 font-medium">Company</th>
+              <th className="text-left px-4 py-2.5 font-medium">Email</th>
+              <th className="text-left px-4 py-2.5 font-medium">Industry</th>
+              <th className="text-left px-4 py-2.5 font-medium">Location</th>
+              <th className="text-left px-4 py-2.5 font-medium">Size</th>
+              <th className="text-left px-4 py-2.5 font-medium">Fit Reason</th>
+              <th className="text-left px-4 py-2.5 font-medium">Links</th>
+              <th className="text-left px-4 py-2.5 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -70,40 +79,96 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                     ${isActive ? "bg-brand-blue/10 border-l-2 border-l-brand-blue" : ""}
                   `}
                 >
+                  {/* score */}
                   <td className="px-4 py-3"><ScoreBar score={prospect.score} /></td>
+
+                  {/* contact: name + title */}
+                  <td className="px-4 py-3 min-w-[160px]">
+                    <span className="font-medium text-text-primary block">{prospect.contactName}</span>
+                    {prospect.title && (
+                      <span className="text-[11px] text-text-muted block truncate max-w-[160px]">{prospect.title}</span>
+                    )}
+                  </td>
+
+                  {/* company */}
+                  <td className="px-4 py-3 min-w-[140px]">
+                    <span className="font-medium text-text-primary">{prospect.companyName}</span>
+                  </td>
+
+                  {/* email + verification */}
+                  <td className="px-4 py-3 min-w-[200px]">
+                    {prospect.email ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-text-secondary truncate max-w-[170px]">{prospect.email}</span>
+                        {prospect.emailVerified ? (
+                          <span className="flex-shrink-0"><ShieldCheck size={12} className="text-emerald-400" /></span>
+                        ) : (
+                          <span className="flex-shrink-0"><ShieldAlert size={12} className="text-amber-400" /></span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-rose-400 italic">No email</span>
+                    )}
+                  </td>
+
+                  {/* industry */}
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-text-primary">{prospect.companyName}</span>
+                    <span className="text-xs text-text-muted">{prospect.industry}</span>
+                  </td>
+
+                  {/* location */}
+                  <td className="px-4 py-3">
+                    {prospect.location ? (
+                      <div className="flex items-center gap-1 text-xs text-text-muted">
+                        <MapPin size={10} className="flex-shrink-0" />
+                        <span className="truncate max-w-[120px]">{prospect.location}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-text-muted">—</span>
+                    )}
+                  </td>
+
+                  {/* employee count */}
+                  <td className="px-4 py-3">
+                    {prospect.employeeCount ? (
+                      <div className="flex items-center gap-1 text-xs text-text-muted">
+                        <Users size={10} className="flex-shrink-0" />
+                        <span>{prospect.employeeCount.toLocaleString()}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-text-muted">—</span>
+                    )}
+                  </td>
+
+                  {/* fit reason */}
+                  <td className="px-4 py-3 max-w-[220px]">
+                    <span className="text-xs text-text-muted line-clamp-2">{prospect.fitReason}</span>
+                  </td>
+
+                  {/* links: website + linkedin */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
                       {prospect.website && (
-                        <a href={prospect.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-text-muted hover:text-brand-glow">
-                          <ExternalLink size={12} />
+                        <a href={prospect.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                          className="text-text-muted hover:text-brand-glow transition-colors">
+                          <ExternalLink size={14} />
                         </a>
+                      )}
+                      {prospect.linkedinUrl && (
+                        <a href={prospect.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                          className="text-text-muted hover:text-blue-400 transition-colors">
+                          <Link2 size={14} />
+                        </a>
+                      )}
+                      {!prospect.website && !prospect.linkedinUrl && (
+                        <span className="text-xs text-text-muted">—</span>
                       )}
                     </div>
                   </td>
+
+                  {/* status */}
                   <td className="px-4 py-3">
-                    <div>
-                      <span className="text-text-primary">{prospect.contactName}</span>
-                      <div className="flex items-center gap-1 text-xs">
-                        {prospect.email ? (
-                          <>
-                            <span className="text-text-muted">{prospect.email}</span>
-                            {prospect.emailVerified ? (
-                              <span className="flex-shrink-0" aria-label="Email verified"><ShieldCheck size={12} className="text-emerald-400" /></span>
-                            ) : (
-                              <span className="flex-shrink-0" aria-label="Email unverified"><ShieldAlert size={12} className="text-amber-400" /></span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-rose-400 italic">No email</span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-text-muted">{prospect.industry}</td>
-                  <td className="px-4 py-3 text-text-muted max-w-[200px] truncate">{prospect.fitReason}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>{badge.label}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.color}`}>{badge.label}</span>
                   </td>
                 </tr>
               );

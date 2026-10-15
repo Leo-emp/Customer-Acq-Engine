@@ -47,8 +47,8 @@ export async function researchProspects(prompt: string): Promise<Prospect[]> {
     return [];
   }
 
-  // build a lookup map for email verification status
-  const emailVerifiedMap = new Map(leads.map((l, i) => [`p${i + 1}`, { verified: l.emailVerified, email: l.email }]));
+  // build a lookup map so we can enrich Gemini's output with Apollo's raw data
+  const apolloMap = new Map(leads.map((l, i) => [`p${i + 1}`, l]));
 
   // format Apollo results for Gemini scoring
   const leadsText = leads
@@ -59,7 +59,7 @@ export async function researchProspects(prompt: string): Promise<Prospect[]> {
     .join("\n\n");
 
   // have Gemini analyze and score the real leads
-  const scored = await agentThinkJSON<{ prospects: Prospect[] }>(
+  const scored = await agentThinkJSON<{ prospects: { id: string; fitReason: string; score: number }[] }>(
     `You are a B2B lead research specialist. You've been given REAL leads from a professional database.
 
 Score each lead based on fit with the business goal:
@@ -69,30 +69,38 @@ Score each lead based on fit with the business goal:
 - Below 40: Don't include
 
 For each qualifying lead, return:
-- id: use the index like "p1"
-- companyName: from the data
-- contactName: real name from the data
-- email: real email from the data
-- website: from the data
-- industry: from the data
+- id: the index like "p1", "p2", etc. (matching the [1], [2] numbers above)
 - fitReason: 1-2 sentences on WHY they're a good fit (be specific)
 - score: your rating
-- status: "new"
 
 Return ONLY prospects scoring 40+, sorted by score descending. Max 10.
 
-Return JSON: { "prospects": [{ "id": "p1", "companyName": "...", "contactName": "...", "email": "...", "website": "...", "industry": "...", "fitReason": "...", "score": 85, "status": "new" }] }`,
+Return JSON: { "prospects": [{ "id": "p1", "fitReason": "...", "score": 85 }] }`,
     `Business goal: ${prompt}\n\nReal B2B leads found:\n${leadsText}`
   );
 
-  return scored.prospects.map((p, i) => {
-    const id = p.id || `p${i + 1}`;
-    const verifyInfo = emailVerifiedMap.get(id);
-    return {
-      ...p,
-      id,
-      status: "new" as const,
-      emailVerified: verifyInfo?.verified ?? false,
-    };
-  });
+  // merge Gemini's scoring with Apollo's full data
+  return scored.prospects
+    .map((p) => {
+      const id = p.id || "p1";
+      const lead = apolloMap.get(id);
+      if (!lead) return null;
+      return {
+        id,
+        companyName: lead.companyName,
+        contactName: lead.name,
+        title: lead.title,
+        email: lead.email,
+        emailVerified: lead.emailVerified,
+        website: lead.website,
+        industry: lead.industry,
+        location: lead.location,
+        employeeCount: lead.employeeCount,
+        linkedinUrl: lead.linkedinUrl,
+        fitReason: p.fitReason,
+        score: p.score,
+        status: "new" as const,
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
 }

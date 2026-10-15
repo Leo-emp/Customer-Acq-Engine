@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Globe, Loader2, Sparkles, Check, Building2, Package, Target, Zap, Tag, MessageSquare, RefreshCw, Brain } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Globe, Loader2, Sparkles, Check, Building2, Package, Target, Zap, Tag, MessageSquare, RefreshCw, Brain, ChevronDown } from "lucide-react";
 import type { CompanyProfile } from "@/lib/store";
 
 interface ExtractedProfile {
@@ -27,6 +27,28 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
   const [error, setError] = useState("");
   const [senderName, setSenderName] = useState(profile?.senderName || "");
   const [confirmed, setConfirmed] = useState(!!profile);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // # load saved companies from Turso on mount
+  const [savedCompanies, setSavedCompanies] = useState<CompanyProfile[]>([]);
+  const [showSwitcher, setShowSwitcher] = useState(false);
+
+  useEffect(() => {
+    // # fetch all saved company profiles from DB
+    fetch("/api/companies")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.companies?.length) {
+          setSavedCompanies(data.companies);
+          // # if no active profile, auto-load the most recent one
+          if (!profile && data.companies.length > 0) {
+            onUpdateProfile(data.companies[0]);
+            setConfirmed(true);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExtract = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,9 +73,12 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
     }
   };
 
-  const handleConfirm = () => {
+  // # save profile to Turso DB then update parent state
+  const handleConfirm = async () => {
     if (!extracted || !senderName.trim()) return;
-    onUpdateProfile({
+    setIsSaving(true);
+
+    const newProfile: CompanyProfile = {
       companyName: extracted.companyName,
       productDescription: extracted.productDescription,
       targetMarket: extracted.targetMarket,
@@ -65,8 +90,38 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
       keyFeatures: extracted.keyFeatures,
       pricing: extracted.pricing,
       tone: extracted.tone,
-    });
+      websiteUrl: url.trim(),
+    };
+
+    try {
+      // # persist to Turso
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProfile),
+      });
+      const data = await res.json();
+      if (data.id) {
+        newProfile.id = data.id;
+        // # add to saved list
+        setSavedCompanies((prev) => [newProfile, ...prev.filter((c) => c.id !== data.id)]);
+      }
+    } catch {
+      // # still activate locally even if DB save fails
+    } finally {
+      setIsSaving(false);
+    }
+
+    onUpdateProfile(newProfile);
     setConfirmed(true);
+  };
+
+  // # switch to a different saved company
+  const handleSwitchCompany = (company: CompanyProfile) => {
+    onUpdateProfile(company);
+    setConfirmed(true);
+    setShowSwitcher(false);
+    setExtracted(null);
   };
 
   return (
@@ -81,6 +136,51 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
           <p className="text-sm text-text-muted">Your company intelligence — extracted by AI from your website</p>
         </div>
       </div>
+
+      {/* saved companies switcher */}
+      {savedCompanies.length > 0 && (
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Saved Companies</p>
+              <p className="text-sm text-text-secondary">{savedCompanies.length} company profile{savedCompanies.length !== 1 ? "s" : ""} in database</p>
+            </div>
+            <button onClick={() => setShowSwitcher(!showSwitcher)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-space-700 hover:bg-space-600 border border-card-border rounded-lg text-xs text-text-secondary transition-colors cursor-pointer">
+              <Building2 size={12} />
+              Switch Company
+              <ChevronDown size={12} className={`transition-transform ${showSwitcher ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+
+          {showSwitcher && (
+            <div className="mt-3 space-y-2 border-t border-card-border pt-3">
+              {savedCompanies.map((company) => (
+                <button
+                  key={company.id || company.companyName}
+                  onClick={() => handleSwitchCompany(company)}
+                  className={`w-full text-left px-4 py-3 rounded-lg border transition-all cursor-pointer ${
+                    profile?.id === company.id
+                      ? "bg-brand-blue/10 border-brand-blue/30"
+                      : "bg-space-800 border-card-border hover:border-brand-blue/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-text-primary">{company.companyName}</span>
+                      <span className="text-xs text-text-muted ml-2">{company.industry}</span>
+                    </div>
+                    {profile?.id === company.id && (
+                      <span className="text-[10px] text-emerald-400 font-medium px-2 py-0.5 bg-emerald-500/10 rounded-full">Active</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1 truncate">{company.valueProposition}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* URL extractor */}
       <div className="glass-card p-5">
@@ -152,9 +252,9 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
               className="w-full bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-brand-blue text-text-primary placeholder:text-text-muted" />
           </div>
 
-          <button onClick={handleConfirm} disabled={!senderName.trim()}
+          <button onClick={handleConfirm} disabled={!senderName.trim() || isSaving}
             className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-brand-blue hover:bg-blue-500 disabled:bg-space-700 disabled:text-text-muted text-white font-semibold rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed">
-            Activate Brand Brain
+            {isSaving ? (<><Loader2 size={16} className="animate-spin" /> Saving to Database...</>) : "Activate Brand Brain"}
           </button>
         </div>
       )}
@@ -166,6 +266,7 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-400" />
               <span className="text-sm font-medium text-emerald-400">Brand Brain Active</span>
+              {profile.id && <span className="text-[10px] text-text-muted bg-space-700 px-2 py-0.5 rounded-full">Saved to DB</span>}
             </div>
             <button onClick={() => { setConfirmed(false); setExtracted(null); }}
               className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary cursor-pointer">
@@ -198,6 +299,7 @@ export default function BrandBrain({ profile, onUpdateProfile }: BrandBrainProps
                 <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">&#8226;</span> Ops includes your company details in invoices</li>
                 <li className="flex items-start gap-2"><span className="text-teal-400 mt-0.5">&#8226;</span> Assist answers support questions with product knowledge</li>
               </ul>
+              <p className="mt-3 pt-3 border-t border-card-border">Company profiles are <span className="text-brand-glow font-medium">persistently stored</span> in Turso database — they survive restarts and are shared across all agents automatically.</p>
             </div>
           </div>
         </div>
