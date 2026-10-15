@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { agentThinkJSON } from "@/lib/gemini";
 import { generateCallNotePDF } from "@/lib/pdf";
 import { buildBrandContext } from "@/lib/brand-context";
-import { DEMO_MODE } from "@/lib/demo-data";
+import { DEMO_MODE, DEMO_SALES_ANALYSIS } from "@/lib/demo-data";
 import type { CallRecord, DealOutcome } from "@/lib/types";
 
 interface AnalysisOutput {
@@ -22,11 +22,11 @@ export async function POST(req: NextRequest) {
   const brandCtx = buildBrandContext(profile);
 
   try {
-    // # demo mode: return pre-cached analysis
+    // # demo mode: return pre-cached Salesforce sales analysis
     if (DEMO_MODE) {
-      const demoResult = { outcome: "interested" as DealOutcome, summary: "The prospect expressed strong interest in our design and development services. They mentioned upcoming product redesign plans and budget availability in Q1. Key concern was timeline — they need delivery within 8 weeks.", nextAction: "Schedule a follow-up call next Tuesday to discuss project scope and timeline in detail. Prepare a preliminary proposal with 8-week delivery plan.", keyInsights: ["Prospect has budget allocated for Q1 product redesign", "Main concern is delivery speed — 8-week deadline is firm", "Currently evaluating 2 other agencies — we need to move fast", "Decision maker is the VP of Product, not the CTO", "They want to start with a small pilot project first"] };
-      const callRecord: CallRecord = { prospectId: prospectId || "manual", transcript, duration: 180, outcome: demoResult.outcome, summary: demoResult.summary, nextAction: demoResult.nextAction };
-      const pdfDataUrl = generateCallNotePDF(prospectName || "Unknown", companyName || "Unknown", demoResult.outcome, demoResult.summary, demoResult.nextAction, transcript, demoResult.keyInsights);
+      const demoResult = DEMO_SALES_ANALYSIS;
+      const callRecord: CallRecord = { prospectId: prospectId || "p1", transcript, duration: 480, outcome: demoResult.outcome, summary: demoResult.summary, nextAction: demoResult.nextAction };
+      const pdfDataUrl = generateCallNotePDF(prospectName || "Dr. Rachel Torres", companyName || "MedVista Health Systems", demoResult.outcome, demoResult.summary, demoResult.nextAction, transcript, demoResult.keyInsights);
       return Response.json({ callRecord, insights: demoResult.keyInsights, pdfDataUrl });
     }
 

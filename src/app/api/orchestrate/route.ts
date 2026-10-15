@@ -2,7 +2,11 @@
 
 import { NextRequest } from "next/server";
 import { runPipeline, analyzeCallResult } from "@/agents/orchestrator";
+import { DEMO_MODE, DEMO_PROSPECTS, DEMO_EMAILS } from "@/lib/demo-data";
 import type { Prospect } from "@/lib/types";
+
+// # realistic delay for demo mode
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // POST /api/orchestrate — start the full pipeline
 export async function POST(req: NextRequest) {
@@ -21,7 +25,11 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        await runPipeline({ prompt, profile }, send);
+        if (DEMO_MODE) {
+          await runDemoPipeline(send, profile?.senderName || "Team", profile?.companyName || "Our Company");
+        } else {
+          await runPipeline({ prompt, profile }, send);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Pipeline failed";
         send({ type: "error", payload: { message } });
@@ -38,6 +46,67 @@ export async function POST(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
+}
+
+// ── Demo pipeline: sequential agents with realistic 3s delays ──
+async function runDemoPipeline(
+  send: (event: { type: string; payload: Record<string, unknown> }) => void,
+  senderName: string,
+  _companyName: string,
+) {
+  const prospects = DEMO_PROSPECTS;
+  const emails = DEMO_EMAILS.map((e) => ({
+    ...e,
+    body: e.body.replace("{senderName}", senderName),
+  }));
+
+  // ═══ STAGE 1: SCOUT ═══
+  send({ type: "stage_change", payload: { stage: "researching" } });
+  send({ type: "agent_event", payload: { agent: "research", status: "thinking", message: "Analyzing target market for enterprise CRM buyers...", timestamp: Date.now() } });
+  await wait(2000);
+
+  send({ type: "agent_event", payload: { agent: "research", status: "working", message: "Searching Apollo.io for B2B companies needing CRM modernization...", timestamp: Date.now() } });
+  await wait(3000);
+
+  send({ type: "agent_event", payload: { agent: "research", status: "working", message: "AI scoring 25 raw leads by CRM readiness, budget signals, and tech stack...", timestamp: Date.now() } });
+  await wait(2500);
+
+  send({ type: "agent_event", payload: { agent: "research", status: "done", message: `Found ${prospects.length} high-fit CRM prospects — 6 verified emails across healthcare, fintech, manufacturing`, timestamp: Date.now() } });
+  send({ type: "prospects", payload: { prospects } });
+  await wait(1000);
+
+  // ═══ STAGE 2: REACH ═══
+  send({ type: "stage_change", payload: { stage: "emailing" } });
+  send({ type: "agent_event", payload: { agent: "outreach", status: "thinking", message: "Crafting personalized Salesforce CRM cold emails for 6 verified contacts...", timestamp: Date.now() } });
+  await wait(3000);
+
+  // # send emails one by one with delays
+  for (let i = 0; i < emails.length; i++) {
+    const prospect = prospects.find((p) => p.id === emails[i].prospectId);
+    send({ type: "agent_event", payload: { agent: "outreach", status: "working", message: `Drafting email for ${prospect?.contactName} at ${prospect?.companyName}...`, timestamp: Date.now() } });
+    await wait(2000);
+
+    send({ type: "agent_event", payload: { agent: "outreach", status: "working", message: `Sending to ${prospect?.contactName}...`, timestamp: Date.now() } });
+    await wait(1500);
+
+    send({ type: "email", payload: { email: { ...emails[i], sentAt: new Date().toISOString() } } });
+  }
+
+  send({ type: "agent_event", payload: { agent: "outreach", status: "done", message: `${emails.length}/${emails.length} emails sent successfully`, timestamp: Date.now() } });
+  await wait(1000);
+
+  // ═══ STAGE 3: CLOSER (call ready) ═══
+  send({ type: "stage_change", payload: { stage: "calling" } });
+  send({ type: "agent_event", payload: { agent: "sales", status: "thinking", message: `Preparing warm call script for ${prospects[0].contactName} — CIO at ${prospects[0].companyName}...`, timestamp: Date.now() } });
+  await wait(3000);
+
+  send({ type: "agent_event", payload: { agent: "sales", status: "done", message: `Voice call ready for ${prospects[0].contactName} at ${prospects[0].companyName}`, timestamp: Date.now() } });
+  send({ type: "call_ready", payload: { prospect: prospects[0], callScript: `Hi ${prospects[0].contactName}, this is ${senderName} from Salesforce. I just sent you an email about how we could help ${prospects[0].companyName} modernize your CRM and unify patient data across your facilities. I know you're evaluating options for FY2027 — do you have a quick minute to discuss how Health Cloud could fit into your digital transformation?`, agentId: "" } });
+  await wait(1000);
+
+  // ═══ DONE ═══
+  send({ type: "agent_event", payload: { agent: "router", status: "done", message: "Pipeline complete — leads found, emails sent, call ready", timestamp: Date.now() } });
+  send({ type: "done", payload: {} });
 }
 
 // PUT /api/orchestrate — analyze call result (after voice call completes)

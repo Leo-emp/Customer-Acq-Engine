@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         return Response.json({ sent, sentCount: sent.length, failedCount: 0 });
       }
       if (action === "followup") {
-        return Response.json({ email: { to: (prospect as Prospect).email, subject: `Re: ${(originalEmail as EmailDraft).subject}`, body: `Hi ${(prospect as Prospect).contactName},\n\nI wanted to follow up on my previous note. I understand things get busy, so I'll keep this brief.\n\nWe recently helped a similar company in ${(prospect as Prospect).industry} reduce their development time by 60% while improving their user experience metrics across the board.\n\nWould it be worth a 10-minute call to see if we could do something similar for ${(prospect as Prospect).companyName}?\n\nBest,\n${name}`, prospectId: (prospect as Prospect).id } });
+        return Response.json({ email: { to: (prospect as Prospect).email, subject: `Re: ${(originalEmail as EmailDraft).subject}`, body: `Hi ${(prospect as Prospect).contactName},\n\nI wanted to follow up on my previous note. I understand things get busy in ${(prospect as Prospect).industry}, so I'll keep this brief.\n\nSince we last connected, we published a new case study from a company similar to ${(prospect as Prospect).companyName} — they consolidated 4 disconnected tools into Salesforce and saw a 34% increase in sales productivity within the first quarter.\n\nWould it be worth a 15-minute call to explore whether we could deliver similar results for your team?\n\nBest,\n${name}`, prospectId: (prospect as Prospect).id } });
       }
     }
 

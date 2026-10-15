@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { agentThinkJSON } from "@/lib/gemini";
 import { generateInvoicePDF } from "@/lib/pdf";
 import { buildBrandContext } from "@/lib/brand-context";
+import { DEMO_MODE, DEMO_INVOICE } from "@/lib/demo-data";
 import type { Invoice } from "@/lib/types";
 
 interface InvoiceInput {
@@ -17,6 +18,23 @@ export async function POST(req: NextRequest) {
     if (action === "generate") {
       if (!companyName) {
         return Response.json({ error: "companyName is required" }, { status: 400 });
+      }
+
+      // # demo mode: return pre-cached Salesforce invoice
+      if (DEMO_MODE) {
+        const items = DEMO_INVOICE.items;
+        const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+        const invoice: Invoice = {
+          id: `INV-${Date.now().toString(36).toUpperCase()}`,
+          prospectId: "p1",
+          companyName: companyName || "MedVista Health Systems",
+          contactName: contactName || "Dr. Rachel Torres",
+          items,
+          total,
+          createdAt: new Date().toISOString(),
+        };
+        const pdfDataUrl = generateInvoicePDF(invoice);
+        return Response.json({ invoice, pdfDataUrl });
       }
 
       const output = await agentThinkJSON<InvoiceInput>(
