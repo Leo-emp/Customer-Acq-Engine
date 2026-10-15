@@ -13,7 +13,6 @@ import {
   Mail,
   Phone,
   FileText,
-  MessageCircle,
   Zap,
   Shield,
   BarChart3,
@@ -164,8 +163,8 @@ function Hero() {
             className="text-lg md:text-xl text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10"
           >
             AcquireAI deploys autonomous agents that find your ideal customers,
-            write personalized outreach, make sales calls, close deals, and handle
-            support. From first touch to signed contract, without the headcount.
+            write personalized outreach, verify email quality, make sales calls,
+            and close deals. From first touch to signed invoice, without the headcount.
           </motion.p>
 
           <motion.div
@@ -219,7 +218,6 @@ function Hero() {
                 { icon: Mail, label: "Reach", active: false, color: "text-blue-400" },
                 { icon: Phone, label: "Closer", active: false, color: "text-violet-400" },
                 { icon: FileText, label: "Ops", active: false, color: "text-amber-400" },
-                { icon: MessageCircle, label: "Assist", active: false, color: "text-emerald-400" },
               ].map((tab) => (
                 <div
                   key={tab.label}
@@ -403,16 +401,6 @@ function Agents() {
       description: "Generates professional invoices and proposals, creates downloadable PDFs, tracks deal financials, and handles the operational side of closing so you can focus on selling.",
       capabilities: ["Invoice generation", "PDF export", "Proposal creation", "Revenue tracking"],
     },
-    {
-      icon: MessageCircle,
-      name: "Assist",
-      role: "Support Agent",
-      color: "text-emerald-400",
-      border: "hover:border-emerald-400/20",
-      bg: "bg-emerald-400/10",
-      description: "Answers prospect questions about pricing, timelines, and deal status using your brand context. Knows everything about the pipeline so responses are always accurate.",
-      capabilities: ["Contextual chat support", "Pricing guidance", "Deal status updates", "Objection handling"],
-    },
   ];
 
   return (
@@ -421,7 +409,7 @@ function Agents() {
         <Reveal>
           <p className="text-xs font-medium tracking-[0.2em] text-brand-blue uppercase mb-4">The Agents</p>
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-text-primary max-w-3xl leading-tight">
-            Six autonomous agents that replace your entire outbound stack.
+            Five autonomous agents that replace your entire outbound stack.
           </h2>
           <p className="text-lg text-text-secondary mt-5 max-w-2xl">
             Each agent is specialized for one stage of customer acquisition.
@@ -473,8 +461,8 @@ function Agents() {
               </div>
               <p className="text-sm text-text-secondary leading-relaxed mb-5">
                 The central intelligence that coordinates all five agents in sequence.
-                One prompt triggers the full pipeline: research, outreach, calls, operations,
-                and support, streaming real-time progress as each agent completes.
+                One prompt triggers the full pipeline: research, outreach, quality checks, calls,
+                and operations, streaming real-time progress as each agent completes.
               </p>
               <div className="flex items-center gap-2 text-xs text-brand-blue font-medium">
                 <Zap size={12} />
@@ -512,7 +500,7 @@ function HowItWorks() {
     {
       number: "04",
       title: "Close and manage deals",
-      description: "Closer analyzes call outcomes with AI. Ops generates invoices and PDFs. Assist handles prospect questions. You get a complete pipeline from stranger to customer.",
+      description: "Closer analyzes call outcomes with AI. Ops generates invoices and PDFs. You get a complete pipeline from stranger to signed deal.",
       detail: "Every artifact is downloadable: PDFs, transcripts, deal summaries.",
     },
   ];
@@ -566,7 +554,7 @@ function Differentiators() {
     {
       icon: TrendingUp,
       title: "Full pipeline, not point solution",
-      description: "Most tools handle one step. AcquireAI covers research, outreach, calls, operations, and support. One platform replaces your SDR team, email tool, dialer, invoicing, and help desk.",
+      description: "Most tools handle one step. AcquireAI covers research, outreach, quality assurance, calls, and invoicing. One platform replaces your SDR team, email tool, dialer, and invoicing stack.",
     },
     {
       icon: Clock,
@@ -626,7 +614,7 @@ function Pricing() {
             Start free. Scale when it works.
           </h2>
           <p className="text-lg text-text-secondary mt-5 max-w-2xl">
-            Every plan includes all five agents and the full pipeline.
+            Every plan includes all five agents and the full autonomous pipeline.
             The difference is volume.
           </p>
         </Reveal>
@@ -721,7 +709,7 @@ function FAQ() {
   const faqs = [
     {
       q: "What does AcquireAI actually do?",
-      a: "AcquireAI runs five specialized AI agents that handle the entire customer acquisition pipeline. Scout finds and qualifies leads from real B2B databases. Reach writes and sends personalized cold emails. Closer makes AI-powered sales calls and analyzes conversations. Ops generates invoices and proposals. Assist provides intelligent support chat. You give it a target market and it runs the full pipeline autonomously.",
+      a: "AcquireAI runs five specialized AI agents that handle the entire customer acquisition pipeline. Scout finds and qualifies leads from real B2B databases. Reach writes and sends personalized cold emails. QA scans every email for quality and personalization before sending. Closer makes AI-powered sales calls and analyzes conversations. Ops generates invoices and proposals. You give it a target market and it runs the full pipeline autonomously.",
     },
     {
       q: "Is the lead data real or AI-generated?",
@@ -737,7 +725,7 @@ function FAQ() {
     },
     {
       q: "What AI model powers the agents?",
-      a: "Google Gemini. Each agent uses Gemini for reasoning, content generation, and decision-making. Scout uses it to score leads. Reach uses it to write personalized emails based on prospect context. Closer uses it to analyze call transcripts. Assist uses it for intelligent chat. The model runs server-side and your data stays private.",
+      a: "Google Gemini. Each agent uses Gemini for reasoning, content generation, and decision-making. Scout uses it to score leads. Reach uses it to write personalized emails based on prospect context. QA uses it to scan emails for quality. Closer uses it to analyze call transcripts. The model runs server-side and your data stays private.",
     },
     {
       q: "Can I customize the agent behavior?",

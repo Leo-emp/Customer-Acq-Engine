@@ -328,13 +328,16 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             <h3 className="text-sm font-semibold text-text-primary">Event History</h3>
           </div>
           <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
-            {agentEvents.map((event, i) => (
+            {agentEvents.map((event, i) => {
+              // # when agent is done, show all events as green (Complete)
+              const dotStatus = latestStatus === "done" ? "done" : event.status;
+              return (
               <div key={i} className="flex items-start gap-3 text-sm">
                 <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                  event.status === "done" ? "bg-emerald-400"
-                  : event.status === "working" ? "bg-blue-400"
-                  : event.status === "thinking" ? "bg-amber-400"
-                  : event.status === "error" ? "bg-rose-400"
+                  dotStatus === "done" ? "bg-emerald-400"
+                  : dotStatus === "working" ? "bg-blue-400"
+                  : dotStatus === "thinking" ? "bg-amber-400"
+                  : dotStatus === "error" ? "bg-rose-400"
                   : "bg-space-500"
                 }`} />
                 <div className="flex-1 min-w-0">
@@ -344,7 +347,8 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
                   {new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

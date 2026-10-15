@@ -105,26 +105,40 @@ async function runDemoPipeline(
   await wait(1000);
 
   // ═══ STAGE 2.5: EMAIL QA ═══
-  send({ type: "agent_event", payload: { agent: "emailqa", status: "thinking", message: `Email QA Agent initializing — scanning all ${emails.length} drafted emails...`, timestamp: Date.now() } });
+  send({ type: "agent_event", payload: { agent: "emailqa", status: "thinking", message: `Email QA Agent initializing — scanning all ${emails.length} drafted emails for quality, personalization, and compliance...`, timestamp: Date.now() } });
   await wait(2000);
 
-  // # scan in batches of 6 for realistic progress without 90s wait
+  // # scan in batches of 6, reporting findings per batch
   const batchSize = 6;
   for (let batch = 0; batch < emails.length; batch += batchSize) {
     const end = Math.min(batch + batchSize, emails.length);
     const batchQA = DEMO_PIPELINE_QA.slice(batch, end);
+    const batchApproved = batchQA.filter(q => q.verdict === "approved");
+    const batchFlagged = batchQA.filter(q => q.verdict !== "approved");
+
+    // # show scanning progress
     const companies = batchQA.map(q => q.companyName).join(", ");
     send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `Scanning emails ${batch + 1}-${end}/${emails.length}: ${companies}...`, timestamp: Date.now() } });
-    await wait(2500);
+    await wait(2000);
+
+    // # show findings for this batch
+    if (batchFlagged.length > 0) {
+      const findings = batchFlagged.map(q => `${q.companyName}: ${q.verdict.replace("_", " ")} — ${q.reason.slice(0, 80)}...`).join(" | ");
+      send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `Batch ${Math.floor(batch / batchSize) + 1} findings: ${batchApproved.length} approved, ${batchFlagged.length} flagged. ${findings}`, timestamp: Date.now() } });
+    } else {
+      send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `Batch ${Math.floor(batch / batchSize) + 1}: all ${batchApproved.length} emails passed — strong personalization, correct tone, no compliance issues`, timestamp: Date.now() } });
+    }
+    await wait(1000);
   }
 
-  // # report QA results
+  // # final summary with specific flagged companies
   const approved = DEMO_PIPELINE_QA.filter(r => r.verdict === "approved");
   const flagged = DEMO_PIPELINE_QA.filter(r => r.verdict !== "approved");
-  send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `QA complete: ${approved.length} approved, ${flagged.length} need revision — auto-sending approved emails...`, timestamp: Date.now() } });
+  const flaggedNames = flagged.map(f => f.companyName).join(", ");
+  send({ type: "agent_event", payload: { agent: "emailqa", status: "working", message: `QA complete: ${approved.length} approved, ${flagged.length} need revision (${flaggedNames}) — auto-sending approved emails...`, timestamp: Date.now() } });
   await wait(2000);
 
-  send({ type: "agent_event", payload: { agent: "emailqa", status: "done", message: `${approved.length}/${emails.length} emails approved & sent — ${flagged.length} held for personalization review`, timestamp: Date.now() } });
+  send({ type: "agent_event", payload: { agent: "emailqa", status: "done", message: `${approved.length}/${emails.length} emails approved and auto-sent. ${flagged.length} held: ${flaggedNames} — need additional personalization before sending`, timestamp: Date.now() } });
   await wait(1000);
 
   // ═══ STAGE 3: CLOSER — auto-dial + analyze call transcript ═══

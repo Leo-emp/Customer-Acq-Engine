@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Mail, Phone, FileText, Headphones, Zap, BarChart3, Settings, ChevronRight, Brain, ShieldCheck } from "lucide-react";
+import { Search, Mail, Phone, FileText, Zap, BarChart3, Settings, ChevronRight, Brain, ShieldCheck } from "lucide-react";
 import type { AgentEvent, AgentRole, AgentStatus, PipelineStage } from "@/lib/types";
 
 export type ViewMode = AgentRole | "overview" | "brandBrain";
@@ -21,7 +21,6 @@ const AGENTS: AgentNav[] = [
   { role: "emailqa", name: "QA", title: "Email QA", icon: <ShieldCheck size={18} />, color: "text-purple-400", activeColor: "text-purple-400", bgActive: "bg-purple-500/10 border-purple-500/30" },
   { role: "sales", name: "Closer", title: "Sales", icon: <Phone size={18} />, color: "text-emerald-400", activeColor: "text-emerald-400", bgActive: "bg-emerald-500/10 border-emerald-500/30" },
   { role: "admin", name: "Ops", title: "Admin", icon: <FileText size={18} />, color: "text-indigo-400", activeColor: "text-indigo-400", bgActive: "bg-indigo-500/10 border-indigo-500/30" },
-  { role: "support", name: "Assist", title: "Support", icon: <Headphones size={18} />, color: "text-teal-400", activeColor: "text-teal-400", bgActive: "bg-teal-500/10 border-teal-500/30" },
 ];
 
 const STATUS_DOT: Record<AgentStatus, string> = {
@@ -37,11 +36,11 @@ const PIPELINE_STAGES: { key: PipelineStage; label: string }[] = [
   { key: "emailing", label: "Outreach" },
   { key: "calling", label: "Calling" },
   { key: "selling", label: "Sales" },
-  { key: "supporting", label: "Support" },
+  { key: "closing", label: "Invoice" },
 ];
 
 const STAGE_ORDER: PipelineStage[] = [
-  "idle", "researching", "emailing", "calling", "selling", "closing", "supporting", "complete",
+  "idle", "researching", "emailing", "calling", "selling", "closing", "complete",
 ];
 
 interface SidebarProps {
