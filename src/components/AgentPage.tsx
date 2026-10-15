@@ -9,6 +9,7 @@ import InvoiceView from "./InvoiceView";
 import SupportChat from "./SupportChat";
 import type { CompanyProfile } from "@/lib/store";
 import type { AgentEvent, AgentRole, AgentStatus, Prospect, EmailDraft, CallRecord, Invoice } from "@/lib/types";
+import { DEMO_MODE, DEMO_SENT_EMAILS, DEMO_FOLLOWUP_EMAILS, DEMO_FOLLOWUP_QA } from "@/lib/demo-data";
 import type { EmailQAResult } from "@/lib/demo-data";
 import { generateCompetitorPDF, generateIndustryPDF, generateMarketPDF } from "@/lib/pdf";
 
@@ -43,24 +44,18 @@ const AGENT_META: Record<string, AgentMeta> = {
   outreach: {
     name: "Reach", title: "Outreach Agent", icon: <Mail size={24} />, color: "text-amber-400", gradient: "from-amber-500 to-orange-500", borderColor: "border-amber-500/30",
     capabilities: [
-      { label: "Draft cold email", action: "draft" },
-      { label: "Send drafted email", action: "send" },
-      { label: "Draft for all leads", action: "draft-all" },
-      { label: "AI voice call", action: "call" },
-      { label: "Write follow-up", action: "followup" },
-      { label: "Batch email campaign", action: "batch" },
+      { label: "Draft Cold Email", action: "draft-cold" },
+      { label: "Write Follow-Up", action: "followup" },
     ],
-    description: "Reach crafts personalized outreach for each prospect. Select a lead below and choose an action to execute.",
+    description: "Reach crafts personalized cold emails and follow-ups using leads from Scout. Select a tab to get started.",
   },
   emailqa: {
     name: "QA", title: "Email QA Agent", icon: <ShieldCheck size={24} />, color: "text-purple-400", gradient: "from-purple-500 to-violet-500", borderColor: "border-purple-500/30",
     capabilities: [
-      { label: "Scan all emails", action: "qa-scan" },
-      { label: "Check personalization", action: "personalization" },
-      { label: "Compliance review", action: "compliance" },
-      { label: "Tone analysis", action: "tone" },
+      { label: "Scan Cold Emails", action: "scan-cold" },
+      { label: "Scan Follow-Ups", action: "scan-followups" },
     ],
-    description: "QA Agent scans every drafted email for quality, personalization gaps, and confidential data leaks. Approved emails are auto-sent.",
+    description: "QA Agent scans drafted emails for quality, personalization gaps, and compliance issues before sending.",
   },
   sales: {
     name: "Closer", title: "Sales Agent", icon: <Phone size={24} />, color: "text-emerald-400", gradient: "from-emerald-500 to-green-500", borderColor: "border-emerald-500/30",
@@ -244,10 +239,6 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
           <OutreachTool
             prospects={prospects}
             emails={emails}
-            callProspect={callProspect}
-            callScript={callScript}
-            callAgentId={callAgentId}
-            onCallComplete={onCallComplete}
             onAddEmails={onAddEmails}
             onAddEvent={onAddEvent}
             profile={profile}
@@ -257,7 +248,6 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
         {role === "emailqa" && (
           <EmailQAPanel
             emails={emails}
-            onAddEmails={onAddEmails}
             onAddEvent={onAddEvent}
           />
         )}
@@ -841,306 +831,310 @@ function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddPros
   );
 }
 
-function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId, onCallComplete, onAddEmails, onAddEvent, profile }: {
+function OutreachTool({ prospects, emails, onAddEmails, onAddEvent, profile }: {
   prospects: Prospect[];
   emails: EmailDraft[];
-  callProspect: Prospect | null;
-  callScript: string;
-  callAgentId: string;
-  onCallComplete: (transcript: string) => void;
   onAddEmails: (emails: EmailDraft[]) => void;
   onAddEvent: (event: AgentEvent) => void;
   profile: CompanyProfile | null;
 }) {
-  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
+  const [activeTab, setActiveTab] = useState<"draft-cold" | "followup">("draft-cold");
+  // # Draft Cold Email state
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [isDrafting, setIsDrafting] = useState(false);
-  const [isBatchDrafting, setIsBatchDrafting] = useState(false);
-  const [isSending, setIsSending] = useState<string | null>(null);
-  const [isBatchSending, setIsBatchSending] = useState(false);
-  const [isFollowingUp, setIsFollowingUp] = useState<string | null>(null);
+  const [coldDrafts, setColdDrafts] = useState<EmailDraft[]>([]);
+  // # Follow-Up state
+  const [sentEmails] = useState<EmailDraft[]>(DEMO_MODE ? DEMO_SENT_EMAILS as EmailDraft[] : []);
+  const [selectedSentEmail, setSelectedSentEmail] = useState<string | null>(null);
+  const [isFollowingUp, setIsFollowingUp] = useState(false);
+  const [followupDrafts, setFollowupDrafts] = useState<EmailDraft[]>([]);
 
-  const handleDraftEmail = async (prospect: Prospect) => {
-    if (!profile) return;
-    setSelectedProspect(prospect);
+  // # toggle lead selection for cold email drafting
+  const toggleLead = (id: string) => {
+    setSelectedLeads(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // # select all / deselect all
+  const toggleAll = () => {
+    if (selectedLeads.size === prospects.length) setSelectedLeads(new Set());
+    else setSelectedLeads(new Set(prospects.map(p => p.id)));
+  };
+
+  // # generate cold email drafts for selected leads
+  const handleGenerateDrafts = async () => {
+    if (selectedLeads.size === 0) return;
     setIsDrafting(true);
-    onAddEvent({ agent: "outreach", status: "working", message: `Drafting email for ${prospect.companyName}`, timestamp: Date.now() });
+    const count = selectedLeads.size;
+    onAddEvent({ agent: "outreach", status: "working", message: `Drafting ${count} cold emails...`, timestamp: Date.now() });
 
     try {
       const res = await fetch("/api/agents/outreach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "draft", prospect, profile }),
+        body: JSON.stringify({ action: "draft-all", prospects: prospects.filter(p => selectedLeads.has(p.id)), profile }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
-      onAddEmails([data.email]);
-      onAddEvent({ agent: "outreach", status: "done", message: `Email drafted for ${prospect.companyName}`, timestamp: Date.now() });
+      setColdDrafts(data.emails);
+      onAddEmails(data.emails);
+      onAddEvent({ agent: "outreach", status: "done", message: `${data.emails.length} cold emails drafted`, timestamp: Date.now() });
     } catch (err) {
       onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Draft failed", timestamp: Date.now() });
     } finally {
       setIsDrafting(false);
-      setSelectedProspect(null);
     }
   };
 
-  const handleDraftAll = async () => {
-    if (!profile || prospects.length === 0) return;
-    const undrafted = prospects.filter((p) => !emails.some((e) => e.prospectId === p.id));
-    if (undrafted.length === 0) return;
+  // # generate follow-up for a specific sent email
+  const handleGenerateFollowup = async (email: EmailDraft) => {
+    const prospect = prospects.find(p => p.id === email.prospectId);
+    if (!prospect) return;
+    setIsFollowingUp(true);
+    setSelectedSentEmail(email.prospectId);
+    onAddEvent({ agent: "outreach", status: "working", message: `Writing follow-up for ${prospect.companyName}...`, timestamp: Date.now() });
 
-    setIsBatchDrafting(true);
-    onAddEvent({ agent: "outreach", status: "working", message: `Batch drafting ${undrafted.length} emails...`, timestamp: Date.now() });
-
-    try {
-      const res = await fetch("/api/agents/outreach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "draft-all", prospects: undrafted, profile }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      onAddEmails(data.emails);
-      onAddEvent({ agent: "outreach", status: "done", message: `${data.emails.length} emails drafted`, timestamp: Date.now() });
-    } catch (err) {
-      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Batch draft failed", timestamp: Date.now() });
-    } finally {
-      setIsBatchDrafting(false);
+    // # in demo mode, use cached follow-up
+    if (DEMO_MODE) {
+      await new Promise(r => setTimeout(r, 2000));
+      const cached = DEMO_FOLLOWUP_EMAILS.find(f => f.prospectId === email.prospectId);
+      if (cached) {
+        const followup = cached as EmailDraft;
+        setFollowupDrafts(prev => [...prev.filter(f => f.prospectId !== email.prospectId), followup]);
+        onAddEvent({ agent: "outreach", status: "done", message: `Follow-up drafted for ${prospect.companyName}`, timestamp: Date.now() });
+      }
+    } else {
+      try {
+        const res = await fetch("/api/agents/outreach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "followup", prospect, originalEmail: email, profile }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setFollowupDrafts(prev => [...prev.filter(f => f.prospectId !== email.prospectId), data.email]);
+        onAddEvent({ agent: "outreach", status: "done", message: `Follow-up drafted for ${prospect.companyName}`, timestamp: Date.now() });
+      } catch (err) {
+        onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Follow-up failed", timestamp: Date.now() });
+      }
     }
+    setIsFollowingUp(false);
+    setSelectedSentEmail(null);
   };
-
-  const handleSendEmail = async (email: EmailDraft) => {
-    if (!profile) return;
-    setIsSending(email.prospectId);
-    onAddEvent({ agent: "outreach", status: "working", message: `Sending email to ${email.to}`, timestamp: Date.now() });
-
-    try {
-      const res = await fetch("/api/agents/outreach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send", draft: email, profile }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      onAddEmails([data.email]);
-      onAddEvent({ agent: "outreach", status: "done", message: `Email sent to ${email.to}`, timestamp: Date.now() });
-    } catch (err) {
-      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Send failed", timestamp: Date.now() });
-    } finally {
-      setIsSending(null);
-    }
-  };
-
-  const handleSendAll = async () => {
-    const unsent = emails.filter((e) => !e.sentAt);
-    if (unsent.length === 0 || !profile) return;
-
-    setIsBatchSending(true);
-    onAddEvent({ agent: "outreach", status: "working", message: `Sending ${unsent.length} emails...`, timestamp: Date.now() });
-
-    try {
-      const res = await fetch("/api/agents/outreach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send-all", draft: unsent, profile }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      onAddEmails(data.sent);
-      onAddEvent({ agent: "outreach", status: "done", message: `${data.sentCount} sent, ${data.failedCount} failed`, timestamp: Date.now() });
-    } catch (err) {
-      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Batch send failed", timestamp: Date.now() });
-    } finally {
-      setIsBatchSending(false);
-    }
-  };
-
-  const handleFollowUp = async (email: EmailDraft) => {
-    const prospect = prospects.find((p) => p.id === email.prospectId);
-    if (!prospect || !profile) return;
-
-    setIsFollowingUp(email.prospectId);
-    onAddEvent({ agent: "outreach", status: "working", message: `Writing follow-up for ${prospect.companyName}`, timestamp: Date.now() });
-
-    try {
-      const res = await fetch("/api/agents/outreach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "followup", prospect, originalEmail: email, profile }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      onAddEmails([data.email]);
-      onAddEvent({ agent: "outreach", status: "done", message: `Follow-up drafted for ${prospect.companyName}`, timestamp: Date.now() });
-    } catch (err) {
-      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "Follow-up failed", timestamp: Date.now() });
-    } finally {
-      setIsFollowingUp(null);
-    }
-  };
-
-  const undraftedCount = prospects.filter((p) => !emails.some((e) => e.prospectId === p.id)).length;
-  const unsentCount = emails.filter((e) => !e.sentAt).length;
-  const sentCount = emails.filter((e) => e.sentAt).length;
-  const isBusy = isDrafting || isBatchDrafting || isBatchSending;
 
   return (
     <div className="space-y-4">
-      {/* batch action bar */}
-      {prospects.length > 0 && (
-        <div className="glass-card p-4 border border-amber-500/20">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Mail size={16} className="text-amber-400" />
-              <h4 className="text-sm font-semibold text-text-primary">Outreach Campaign</h4>
-            </div>
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="text-text-muted">{prospects.length} prospects</span>
-              <span className="text-amber-400">{emails.length} drafted</span>
-              <span className="text-emerald-400">{sentCount} sent</span>
-            </div>
-          </div>
+      {/* tab switcher */}
+      <div className="flex gap-2">
+        <button onClick={() => setActiveTab("draft-cold")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            activeTab === "draft-cold" ? "bg-amber-500/10 border border-amber-500/30 text-amber-400" : "bg-space-800 border border-card-border text-text-muted hover:text-text-secondary"
+          }`}>
+          <Mail size={14} /> Draft Cold Email
+        </button>
+        <button onClick={() => setActiveTab("followup")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            activeTab === "followup" ? "bg-amber-500/10 border border-amber-500/30 text-amber-400" : "bg-space-800 border border-card-border text-text-muted hover:text-text-secondary"
+          }`}>
+          <RefreshCw size={14} /> Write Follow-Up
+          {sentEmails.length > 0 && <span className="text-[10px] bg-space-700 px-1.5 py-0.5 rounded-md">{sentEmails.length}</span>}
+        </button>
+      </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button onClick={handleDraftAll} disabled={undraftedCount === 0 || isBusy || !profile}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-              {isBatchDrafting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-              {isBatchDrafting ? "Drafting..." : `Draft all (${undraftedCount})`}
-            </button>
-            <button onClick={handleSendAll} disabled={unsentCount === 0 || isBusy}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-              {isBatchSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {isBatchSending ? "Sending..." : `Send all drafts (${unsentCount})`}
-            </button>
-          </div>
-
-          {/* prospect grid */}
-          <p className="text-xs text-text-muted mb-2">Or select individually:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-            {prospects.map((p) => {
-              const email = emails.find((e) => e.prospectId === p.id);
-              const hasEmail = !!email;
-              const isSent = !!email?.sentAt;
-              return (
-                <button key={p.id} onClick={() => !hasEmail && !isBusy && handleDraftEmail(p)} disabled={hasEmail || isBusy || !profile}
-                  className={`text-left p-3 rounded-lg border transition-all ${
-                    isSent ? "border-emerald-500/20 bg-emerald-500/5" :
-                    hasEmail ? "border-amber-500/20 bg-amber-500/5" :
-                    selectedProspect?.id === p.id ? "border-amber-500/30 bg-amber-500/10" :
-                    "border-card-border bg-space-800 hover:bg-space-700 cursor-pointer"
-                  } disabled:cursor-not-allowed`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-primary truncate">{p.companyName}</span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {isSent && <CheckCircle2 size={14} className="text-emerald-400" />}
-                      {hasEmail && !isSent && <Clock size={14} className="text-amber-400" />}
-                      {selectedProspect?.id === p.id && isDrafting && <Loader2 size={14} className="text-amber-400 animate-spin" />}
-                    </div>
+      {/* ── TAB 1: DRAFT COLD EMAIL ── */}
+      {activeTab === "draft-cold" && (
+        <div className="space-y-4">
+          {prospects.length === 0 ? (
+            <div className="glass-card p-6 text-center">
+              <Search size={24} className="text-text-muted mx-auto mb-2" />
+              <p className="text-sm text-text-muted mb-1">No leads yet</p>
+              <p className="text-xs text-text-muted">Use Scout to search for leads first, then come back to draft emails.</p>
+            </div>
+          ) : (
+            <>
+              {/* selection header */}
+              <div className="glass-card p-4 border border-amber-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Mail size={16} className="text-amber-400" />
+                    <h4 className="text-sm font-semibold text-text-primary">Select Leads to Email</h4>
                   </div>
-                  <p className="text-[11px] text-text-muted truncate">{p.contactName} &middot; {p.email}</p>
-                  {isSent && <p className="text-[10px] text-emerald-400 mt-1">Sent</p>}
-                  {hasEmail && !isSent && <p className="text-[10px] text-amber-400 mt-1">Draft ready</p>}
+                  <div className="flex items-center gap-3">
+                    <button onClick={toggleAll} className="text-[11px] text-brand-glow hover:underline cursor-pointer">
+                      {selectedLeads.size === prospects.length ? "Deselect all" : "Select all"}
+                    </button>
+                    <span className="text-[11px] text-text-muted">{selectedLeads.size} selected</span>
+                  </div>
+                </div>
+
+                {/* lead selection grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                  {prospects.map(p => {
+                    const isSelected = selectedLeads.has(p.id);
+                    return (
+                      <button key={p.id} onClick={() => toggleLead(p.id)}
+                        className={`text-left p-3 rounded-lg border transition-all cursor-pointer ${
+                          isSelected ? "border-amber-500/30 bg-amber-500/10" : "border-card-border bg-space-800 hover:bg-space-700"
+                        }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-text-primary truncate">{p.companyName}</span>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                            isSelected ? "bg-amber-500 border-amber-500" : "border-space-500"
+                          }`}>
+                            {isSelected && <CheckCircle2 size={10} className="text-white" />}
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-text-muted truncate">{p.contactName} · {p.email}</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">{p.industry} · {p.employeeCount?.toLocaleString()} employees</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* generate button */}
+                <button onClick={handleGenerateDrafts} disabled={selectedLeads.size === 0 || isDrafting}
+                  className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-space-700 disabled:text-text-muted text-white font-semibold rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed">
+                  {isDrafting ? (<><Loader2 size={16} className="animate-spin" /> Generating {selectedLeads.size} Emails...</>) : (<><Sparkles size={16} /> Generate {selectedLeads.size} Cold Email{selectedLeads.size !== 1 ? "s" : ""}</>)}
                 </button>
-              );
-            })}
-          </div>
-          {!profile && <p className="text-xs text-amber-400 mt-2">Set up Brand Brain first to enable outreach</p>}
+              </div>
+
+              {/* generated cold email drafts */}
+              {coldDrafts.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                    <Mail size={14} className="text-amber-400" /> Cold Email Drafts ({coldDrafts.length})
+                  </h4>
+                  {coldDrafts.map((email, i) => {
+                    const prospect = prospects.find(p => p.id === email.prospectId);
+                    return (
+                      <div key={`cold-${i}`} className="glass-card overflow-hidden">
+                        <div className="px-4 py-3 border-b border-card-border">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-text-muted">To: <span className="text-text-primary">{email.to}</span></p>
+                              <p className="text-xs text-text-muted mt-0.5">Subject: <span className="text-text-primary font-medium">{email.subject}</span></p>
+                            </div>
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-[11px] text-amber-400 font-medium">
+                              <Clock size={12} /> Draft
+                            </span>
+                          </div>
+                          {prospect && <p className="text-[10px] text-text-muted mt-1">{prospect.companyName} · {prospect.industry}</p>}
+                        </div>
+                        <div className="px-4 py-3">
+                          <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      {prospects.length === 0 && (
-        <div className="glass-card p-4 text-center">
-          <p className="text-sm text-text-muted mb-2">No prospects yet</p>
-          <p className="text-xs text-text-muted">Use Scout to find leads first, then come back to draft emails.</p>
-        </div>
-      )}
-
-      {/* email drafts with per-email actions */}
-      {emails.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-text-primary">
-            <Mail size={16} className="text-amber-400" />
-            Emails ({emails.length})
-          </h3>
-
-          {emails.map((email, i) => {
-            const prospect = prospects.find((p) => p.id === email.prospectId);
-            return (
-              <div key={`${email.prospectId}-${i}`} className="glass-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-card-border flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                      <span>To:</span>
-                      <span className="text-text-primary">{email.to}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-text-muted mt-1">
-                      <span>Subject:</span>
-                      <span className="text-text-primary font-medium">{email.subject}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {email.sentAt ? (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-[11px] text-emerald-400 font-medium">
-                        <CheckCircle2 size={12} /> Sent
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-[11px] text-amber-400 font-medium">
-                        <Clock size={12} /> Draft
-                      </span>
-                    )}
-                  </div>
+      {/* ── TAB 2: WRITE FOLLOW-UP ── */}
+      {activeTab === "followup" && (
+        <div className="space-y-4">
+          {sentEmails.length === 0 ? (
+            <div className="glass-card p-6 text-center">
+              <Send size={24} className="text-text-muted mx-auto mb-2" />
+              <p className="text-sm text-text-muted mb-1">No sent emails yet</p>
+              <p className="text-xs text-text-muted">Draft and send cold emails first, then come back to write follow-ups.</p>
+            </div>
+          ) : (
+            <>
+              <div className="glass-card p-4 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Send size={16} className="text-emerald-400" />
+                  <h4 className="text-sm font-semibold text-text-primary">Sent Emails</h4>
+                  <span className="text-[11px] text-text-muted">— Click to draft a follow-up</span>
                 </div>
-
-                <div className="px-4 py-3">
-                  <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
-                </div>
-
-                {/* per-email action buttons */}
-                <div className="px-4 py-2.5 border-t border-card-border flex items-center gap-2">
-                  {!email.sentAt && (
-                    <button onClick={() => handleSendEmail(email)} disabled={isSending === email.prospectId || isBusy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-                      {isSending === email.prospectId ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                      Send
-                    </button>
-                  )}
-                  {email.sentAt && prospect && (
-                    <button onClick={() => handleFollowUp(email)} disabled={isFollowingUp === email.prospectId || isBusy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-                      {isFollowingUp === email.prospectId ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
-                      Follow-up
-                    </button>
-                  )}
+                <div className="space-y-2">
+                  {sentEmails.map(email => {
+                    const prospect = prospects.find(p => p.id === email.prospectId);
+                    const hasFollowup = followupDrafts.some(f => f.prospectId === email.prospectId);
+                    const isGenerating = isFollowingUp && selectedSentEmail === email.prospectId;
+                    return (
+                      <button key={email.prospectId} onClick={() => !hasFollowup && !isFollowingUp && handleGenerateFollowup(email)}
+                        disabled={hasFollowup || isFollowingUp}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${
+                          hasFollowup ? "border-emerald-500/20 bg-emerald-500/5" :
+                          isGenerating ? "border-amber-500/30 bg-amber-500/10" :
+                          "border-card-border bg-space-800 hover:bg-space-700 cursor-pointer"
+                        } disabled:cursor-not-allowed`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-text-primary">{prospect?.companyName || email.to}</span>
+                            <p className="text-[11px] text-text-muted truncate mt-0.5">{email.subject}</p>
+                            <p className="text-[10px] text-text-muted">Sent {new Date(email.sentAt!).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex-shrink-0 ml-2">
+                            {isGenerating && <Loader2 size={14} className="text-amber-400 animate-spin" />}
+                            {hasFollowup && <CheckCircle2 size={14} className="text-emerald-400" />}
+                            {!hasFollowup && !isGenerating && <Mail size={14} className="text-text-muted" />}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {callProspect && (
-        <VoiceCall prospect={callProspect} callScript={callScript} agentId={callAgentId} onCallComplete={onCallComplete} />
+              {/* follow-up drafts */}
+              {followupDrafts.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                    <RefreshCw size={14} className="text-amber-400" /> Follow-Up Drafts ({followupDrafts.length})
+                  </h4>
+                  {followupDrafts.map((email, i) => {
+                    const prospect = prospects.find(p => p.id === email.prospectId);
+                    return (
+                      <div key={`followup-${i}`} className="glass-card overflow-hidden">
+                        <div className="px-4 py-3 border-b border-card-border">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-text-muted">To: <span className="text-text-primary">{email.to}</span></p>
+                              <p className="text-xs text-text-muted mt-0.5">Subject: <span className="text-text-primary font-medium">{email.subject}</span></p>
+                            </div>
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 text-[11px] text-blue-400 font-medium">
+                              <RefreshCw size={10} /> Follow-Up
+                            </span>
+                          </div>
+                          {prospect && <p className="text-[10px] text-text-muted mt-1">{prospect.companyName} · {prospect.industry}</p>}
+                        </div>
+                        <div className="px-4 py-3">
+                          <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
 // ── EMAIL QA AGENT PANEL ──
-// # Scans drafted emails → shows verdict for each → auto-sends approved ones
-function EmailQAPanel({ emails, onAddEmails, onAddEvent }: {
+// # 2 tabs: Scan Cold Emails + Scan Follow-Ups
+function EmailQAPanel({ emails, onAddEvent }: {
   emails: EmailDraft[];
-  onAddEmails: (emails: EmailDraft[]) => void;
   onAddEvent: (event: AgentEvent) => void;
 }) {
-  const [qaResults, setQaResults] = useState<EmailQAResult[]>([]);
+  const [activeTab, setActiveTab] = useState<"scan-cold" | "scan-followups">("scan-cold");
+  const [coldQaResults, setColdQaResults] = useState<EmailQAResult[]>([]);
+  const [followupQaResults, setFollowupQaResults] = useState<EmailQAResult[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0); // # 0-10, which email we're scanning
-  const [scanComplete, setScanComplete] = useState(false);
-  const [autoSentCount, setAutoSentCount] = useState(0);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [coldScanComplete, setColdScanComplete] = useState(false);
+  const [followupScanComplete, setFollowupScanComplete] = useState(false);
 
   // # verdict styling map
   const verdictConfig: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
@@ -1150,22 +1144,20 @@ function EmailQAPanel({ emails, onAddEmails, onAddEvent }: {
     flagged_confidential: { label: "Confidential Flag", icon: <Lock size={14} />, color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
   };
 
-  const handleScan = async () => {
+  // # scan cold emails — fetches cached QA results from API
+  const handleScanCold = async () => {
     setIsScanning(true);
     setScanProgress(0);
-    setScanComplete(false);
-    setQaResults([]);
-    setAutoSentCount(0);
-    onAddEvent({ agent: "emailqa", status: "working", message: "Email QA Agent scanning all drafted emails...", timestamp: Date.now() });
+    setColdQaResults([]);
+    onAddEvent({ agent: "emailqa", status: "working", message: "Scanning cold email drafts...", timestamp: Date.now() });
 
-    // # simulate 3-second scan per email with visual progress
-    const totalEmails = Math.min(emails.length, 10);
-    for (let i = 0; i < totalEmails; i++) {
+    // # animate progress through each email
+    const total = Math.min(emails.length, 10);
+    for (let i = 0; i < total; i++) {
       setScanProgress(i + 1);
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 2000));
     }
 
-    // # fetch cached QA results from API
     try {
       const res = await fetch("/api/agents/outreach", {
         method: "POST",
@@ -1174,169 +1166,234 @@ function EmailQAPanel({ emails, onAddEmails, onAddEvent }: {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
-      setQaResults(data.results);
-
-      // # count approved and auto-sent
-      const approved = (data.results as EmailQAResult[]).filter(r => r.verdict === "approved");
-      setAutoSentCount(approved.length);
-
-      // # auto-send approved emails — mark them as sent
-      const autoSentEmails = emails
-        .filter((_, idx) => approved.some(r => r.emailIndex === idx))
-        .map(e => ({ ...e, sentAt: new Date().toISOString() }));
-      if (autoSentEmails.length > 0) {
-        onAddEmails(autoSentEmails);
-      }
-
+      setColdQaResults(data.results);
+      const approved = (data.results as EmailQAResult[]).filter(r => r.verdict === "approved").length;
       const flagged = (data.results as EmailQAResult[]).filter(r => r.verdict !== "approved").length;
-      onAddEvent({
-        agent: "emailqa", status: "done",
-        message: `QA complete: ${approved.length} approved & auto-sent, ${flagged} flagged for review`,
-        timestamp: Date.now(),
-      });
-      setScanComplete(true);
+      onAddEvent({ agent: "emailqa", status: "done", message: `Cold email scan: ${approved} approved, ${flagged} flagged`, timestamp: Date.now() });
+      setColdScanComplete(true);
     } catch (err) {
-      onAddEvent({ agent: "emailqa", status: "error", message: err instanceof Error ? err.message : "QA scan failed", timestamp: Date.now() });
+      onAddEvent({ agent: "emailqa", status: "error", message: err instanceof Error ? err.message : "Scan failed", timestamp: Date.now() });
     } finally {
       setIsScanning(false);
     }
   };
 
-  return (
-    <div className="space-y-3">
-      <div className="glass-card p-4 border border-purple-500/20">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-purple-400" />
-            <h4 className="text-sm font-semibold text-text-primary">Email QA Agent</h4>
-            <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-[10px] font-medium text-purple-400 border border-purple-500/20">AI Review</span>
-          </div>
-          {scanComplete && (
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="text-emerald-400">{autoSentCount} auto-sent</span>
-              <span className="text-amber-400">{qaResults.filter(r => r.verdict !== "approved").length} flagged</span>
-            </div>
-          )}
+  // # scan follow-up emails — uses cached DEMO_FOLLOWUP_QA
+  const handleScanFollowups = async () => {
+    setIsScanning(true);
+    setScanProgress(0);
+    setFollowupQaResults([]);
+    onAddEvent({ agent: "emailqa", status: "working", message: "Scanning follow-up email drafts...", timestamp: Date.now() });
+
+    // # animate progress through each follow-up
+    const total = DEMO_FOLLOWUP_EMAILS.length;
+    for (let i = 0; i < total; i++) {
+      setScanProgress(i + 1);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    // # small extra delay then load cached results
+    await new Promise(r => setTimeout(r, 1000));
+    setFollowupQaResults(DEMO_FOLLOWUP_QA);
+    const approved = DEMO_FOLLOWUP_QA.filter(r => r.verdict === "approved").length;
+    const flagged = DEMO_FOLLOWUP_QA.filter(r => r.verdict !== "approved").length;
+    onAddEvent({ agent: "emailqa", status: "done", message: `Follow-up scan: ${approved} approved, ${flagged} flagged`, timestamp: Date.now() });
+    setFollowupScanComplete(true);
+    setIsScanning(false);
+  };
+
+  // # render QA results grid + cards (shared between both tabs)
+  const renderResults = (results: EmailQAResult[]) => (
+    <div className="space-y-2 mt-3">
+      {/* summary stats */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2.5 text-center">
+          <p className="text-lg font-bold text-emerald-400">{results.filter(r => r.verdict === "approved").length}</p>
+          <p className="text-[10px] text-text-muted">Approved</p>
         </div>
-        <p className="text-xs text-text-muted mb-3">
-          Scans every drafted email for quality, personalization, and confidential data leaks before sending.
-        </p>
-
-        {/* scan button */}
-        {!isScanning && !scanComplete && (
-          <button onClick={handleScan} disabled={emails.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-medium text-purple-400 hover:bg-purple-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
-            <ShieldCheck size={14} /> Run QA Scan on {Math.min(emails.length, 10)} Emails
-          </button>
-        )}
-
-        {/* scanning animation */}
-        {isScanning && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
-              <Loader2 size={18} className="text-purple-400 animate-spin" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">
-                  Scanning email {scanProgress} of {Math.min(emails.length, 10)}...
-                </p>
-                <p className="text-[11px] text-text-muted mt-0.5">
-                  {scanProgress > 0 && emails[scanProgress - 1]
-                    ? `Reviewing: ${emails[scanProgress - 1].to}`
-                    : "Initializing QA agent..."
-                  }
-                </p>
-              </div>
-            </div>
-            {/* progress bar */}
-            <div className="h-1.5 bg-space-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-purple-500 to-violet-500 rounded-full transition-all duration-1000"
-                style={{ width: `${(scanProgress / Math.min(emails.length, 10)) * 100}%` }} />
-            </div>
-            {/* live scan items */}
-            <div className="space-y-1.5">
-              {Array.from({ length: scanProgress }).map((_, i) => (
-                <div key={i} className="flex items-center gap-2 text-[11px] animate-fade-in-up">
-                  {i < scanProgress - 1 ? (
-                    <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />
-                  ) : (
-                    <Loader2 size={12} className="text-purple-400 animate-spin flex-shrink-0" />
-                  )}
-                  <span className="text-text-muted truncate">{emails[i]?.to || `Email ${i + 1}`}</span>
-                  {i < scanProgress - 1 && <span className="text-emerald-400 ml-auto flex-shrink-0">Scanned</span>}
-                  {i === scanProgress - 1 && <span className="text-purple-400 ml-auto flex-shrink-0">Scanning...</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* results */}
-        {scanComplete && qaResults.length > 0 && (
-          <div className="space-y-2 mt-3">
-            {/* summary stats */}
-            <div className="grid grid-cols-4 gap-2 mb-3">
-              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-emerald-400">{qaResults.filter(r => r.verdict === "approved").length}</p>
-                <p className="text-[10px] text-text-muted">Approved</p>
-              </div>
-              <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-amber-400">{qaResults.filter(r => r.verdict === "rewrite_copy").length}</p>
-                <p className="text-[10px] text-text-muted">Rewrite</p>
-              </div>
-              <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-orange-400">{qaResults.filter(r => r.verdict === "needs_personalization").length}</p>
-                <p className="text-[10px] text-text-muted">Personalize</p>
-              </div>
-              <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-rose-400">{qaResults.filter(r => r.verdict === "flagged_confidential").length}</p>
-                <p className="text-[10px] text-text-muted">Flagged</p>
-              </div>
-            </div>
-
-            {/* individual results */}
-            {qaResults.map((result, i) => {
-              const cfg = verdictConfig[result.verdict] || verdictConfig.approved;
-              return (
-                <div key={i} className={`p-3 rounded-lg border ${cfg.border} ${cfg.bg}`}>
-                  <div className="flex items-start justify-between mb-1.5">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`${cfg.color}`}>{cfg.icon}</span>
-                        <span className="text-sm font-medium text-text-primary truncate">{result.companyName}</span>
-                      </div>
-                      <p className="text-[11px] text-text-muted mt-0.5 truncate">{result.to}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
-                        {cfg.label}
-                      </span>
-                      <span className="text-[10px] text-text-muted">{result.confidence}%</span>
-                      {result.autoSent && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] text-emerald-400 font-medium">
-                          <Send size={8} /> Sent
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-text-secondary leading-relaxed">{result.reason}</p>
-                  {result.suggestions && result.suggestions.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
-                      {result.suggestions.map((s, j) => (
-                        <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
-                          <span className="text-text-muted mt-0.5">•</span>
-                          <span>{s}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-2.5 text-center">
+          <p className="text-lg font-bold text-amber-400">{results.filter(r => r.verdict === "rewrite_copy").length}</p>
+          <p className="text-[10px] text-text-muted">Rewrite</p>
+        </div>
+        <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-2.5 text-center">
+          <p className="text-lg font-bold text-orange-400">{results.filter(r => r.verdict === "needs_personalization").length}</p>
+          <p className="text-[10px] text-text-muted">Personalize</p>
+        </div>
+        <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-2.5 text-center">
+          <p className="text-lg font-bold text-rose-400">{results.filter(r => r.verdict === "flagged_confidential").length}</p>
+          <p className="text-[10px] text-text-muted">Flagged</p>
+        </div>
       </div>
+      {/* individual result cards */}
+      {results.map((result, i) => {
+        const cfg = verdictConfig[result.verdict] || verdictConfig.approved;
+        return (
+          <div key={i} className={`p-3 rounded-lg border ${cfg.border} ${cfg.bg}`}>
+            <div className="flex items-start justify-between mb-1.5">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={cfg.color}>{cfg.icon}</span>
+                  <span className="text-sm font-medium text-text-primary truncate">{result.companyName}</span>
+                </div>
+                <p className="text-[11px] text-text-muted mt-0.5 truncate">{result.to}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
+                <span className="text-[10px] text-text-muted">{result.confidence}%</span>
+                {result.autoSent && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] text-emerald-400 font-medium">
+                    <Send size={8} /> Sent
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-text-secondary leading-relaxed">{result.reason}</p>
+            {result.suggestions && result.suggestions.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
+                {result.suggestions.map((s, j) => (
+                  <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
+                    <span className="mt-0.5">&bull;</span>
+                    <span>{s}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // # scanning animation (shared between both tabs)
+  const renderScanAnimation = (total: number, emailList: { to: string }[]) => (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
+        <Loader2 size={18} className="text-purple-400 animate-spin" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-text-primary">Scanning email {scanProgress} of {total}...</p>
+          <p className="text-[11px] text-text-muted mt-0.5">
+            {scanProgress > 0 && emailList[scanProgress - 1]
+              ? `Reviewing: ${emailList[scanProgress - 1].to}`
+              : "Initializing QA agent..."}
+          </p>
+        </div>
+      </div>
+      {/* progress bar */}
+      <div className="h-1.5 bg-space-800 rounded-full overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-purple-500 to-violet-500 rounded-full transition-all duration-1000"
+          style={{ width: `${(scanProgress / total) * 100}%` }} />
+      </div>
+      {/* live scan items */}
+      <div className="space-y-1.5">
+        {Array.from({ length: scanProgress }).map((_, i) => (
+          <div key={i} className="flex items-center gap-2 text-[11px] animate-fade-in-up">
+            {i < scanProgress - 1
+              ? <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />
+              : <Loader2 size={12} className="text-purple-400 animate-spin flex-shrink-0" />}
+            <span className="text-text-muted truncate">{emailList[i]?.to || `Email ${i + 1}`}</span>
+            {i < scanProgress - 1 && <span className="text-emerald-400 ml-auto flex-shrink-0">Scanned</span>}
+            {i === scanProgress - 1 && <span className="text-purple-400 ml-auto flex-shrink-0">Scanning...</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* tab switcher */}
+      <div className="flex gap-2">
+        <button onClick={() => setActiveTab("scan-cold")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            activeTab === "scan-cold"
+              ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
+              : "bg-space-800 border border-card-border text-text-muted hover:text-text-secondary"
+          }`}>
+          <ShieldCheck size={14} /> Scan Cold Emails
+          {emails.length > 0 && <span className="text-[10px] bg-space-700 px-1.5 py-0.5 rounded-md">{emails.length}</span>}
+        </button>
+        <button onClick={() => setActiveTab("scan-followups")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            activeTab === "scan-followups"
+              ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
+              : "bg-space-800 border border-card-border text-text-muted hover:text-text-secondary"
+          }`}>
+          <ShieldCheck size={14} /> Scan Follow-Ups
+          <span className="text-[10px] bg-space-700 px-1.5 py-0.5 rounded-md">{DEMO_FOLLOWUP_EMAILS.length}</span>
+        </button>
+      </div>
+
+      {/* ── TAB 1: SCAN COLD EMAILS ── */}
+      {activeTab === "scan-cold" && (
+        <div className="glass-card p-4 border border-purple-500/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-purple-400" />
+              <h4 className="text-sm font-semibold text-text-primary">Cold Email QA</h4>
+              <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-[10px] font-medium text-purple-400 border border-purple-500/20">AI Review</span>
+            </div>
+            {coldScanComplete && (
+              <span className="text-[11px] text-emerald-400">{coldQaResults.filter(r => r.verdict === "approved").length} approved</span>
+            )}
+          </div>
+          <p className="text-xs text-text-muted mb-3">
+            Scans cold email drafts from Reach for quality, personalization, and compliance.
+          </p>
+
+          {/* empty state */}
+          {emails.length === 0 && !coldScanComplete && (
+            <p className="text-xs text-text-muted p-3 bg-space-800 rounded-lg">No cold email drafts yet. Draft emails in the Reach agent first.</p>
+          )}
+
+          {/* scan button */}
+          {emails.length > 0 && !isScanning && !coldScanComplete && (
+            <button onClick={handleScanCold}
+              className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer">
+              <ShieldCheck size={14} /> Scan {Math.min(emails.length, 10)} Cold Emails
+            </button>
+          )}
+
+          {/* scanning animation */}
+          {isScanning && activeTab === "scan-cold" && renderScanAnimation(Math.min(emails.length, 10), emails)}
+
+          {/* results */}
+          {coldScanComplete && coldQaResults.length > 0 && renderResults(coldQaResults)}
+        </div>
+      )}
+
+      {/* ── TAB 2: SCAN FOLLOW-UPS ── */}
+      {activeTab === "scan-followups" && (
+        <div className="glass-card p-4 border border-purple-500/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-purple-400" />
+              <h4 className="text-sm font-semibold text-text-primary">Follow-Up QA</h4>
+              <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-[10px] font-medium text-purple-400 border border-purple-500/20">AI Review</span>
+            </div>
+            {followupScanComplete && (
+              <span className="text-[11px] text-emerald-400">{followupQaResults.filter(r => r.verdict === "approved").length} approved</span>
+            )}
+          </div>
+          <p className="text-xs text-text-muted mb-3">
+            Scans follow-up email drafts from Reach for quality and personalization.
+          </p>
+
+          {/* scan button */}
+          {!isScanning && !followupScanComplete && (
+            <button onClick={handleScanFollowups}
+              className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer">
+              <ShieldCheck size={14} /> Scan {DEMO_FOLLOWUP_EMAILS.length} Follow-Up Emails
+            </button>
+          )}
+
+          {/* scanning animation */}
+          {isScanning && activeTab === "scan-followups" && renderScanAnimation(DEMO_FOLLOWUP_EMAILS.length, DEMO_FOLLOWUP_EMAILS)}
+
+          {/* results */}
+          {followupScanComplete && followupQaResults.length > 0 && renderResults(followupQaResults)}
+        </div>
+      )}
     </div>
   );
 }
