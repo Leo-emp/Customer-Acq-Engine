@@ -2,6 +2,8 @@
 // # DEMO_MODE hardcoded to true for hackathon — uses cached responses
 // # Every response is comprehensive, structured, and realistic
 
+import type { CallRecord, Invoice } from "@/lib/types";
+
 export const DEMO_MODE = true;
 
 // ══════════════════════════════════════════════════════════
@@ -379,19 +381,70 @@ export const DEMO_FOLLOWUP_QA: EmailQAResult[] = [
 ];
 
 // ══════════════════════════════════════════════════════════
+// CLOSER — Demo Call Transcript (simulated voice call with MedVista CIO)
+// ══════════════════════════════════════════════════════════
+
+export const DEMO_CALL_TRANSCRIPT = `[00:00] Alex Chen: Good morning, Dr. Torres. This is Alex Chen from Salesforce. I sent you an email earlier this week about how Health Cloud could help MedVista modernize your CRM infrastructure. Do you have a few minutes?
+
+[00:12] Dr. Torres: Hi Alex, yes I saw your email. Actually, your timing is good — we're actively evaluating CRM options right now. Our Siebel system is becoming a real liability.
+
+[00:24] Alex Chen: I appreciate you taking the time. Can you tell me more about what's driving the urgency? Your email mentioned compliance concerns.
+
+[00:32] Dr. Torres: Absolutely. We have a compliance audit coming up in Q2 2027, and our current system has significant gaps in audit trails for patient data access. We're running Siebel from 2012 — it doesn't have modern access logging, and our compliance team is flagging it as a risk. Beyond that, our care coordination across 12 facilities is completely manual. Referrals get lost, follow-ups slip through the cracks.
+
+[01:05] Alex Chen: That's a common challenge we see in health systems your size. The compliance piece is critical — with Health Cloud, every data access event is logged automatically, and you get role-based access controls that map to your clinical hierarchy. For care coordination, we can unify patient records across all 12 facilities into a single view. One of our clients, a 3,200-bed system, reduced their referral processing time by 60% after implementing Health Cloud.
+
+[01:38] Dr. Torres: That's compelling. What does a realistic timeline look like? My biggest fear is disrupting clinical workflows during migration. We can't afford even an hour of downtime.
+
+[01:50] Alex Chen: Completely understand — zero clinical downtime is non-negotiable. We do phased migrations where both systems run in parallel. Typically for a system your size, we're looking at 14-16 weeks. Phase 1 is core setup and data migration running alongside Siebel. Phase 2 is department-by-department cutover. Phase 3 is training and optimization. At no point does Siebel go offline until every department has been validated on Health Cloud.
+
+[02:22] Dr. Torres: That's reassuring. What about budget? We have preliminary approval from our CFO for CRM modernization, somewhere in the $250K to $400K range for the first year.
+
+[02:35] Alex Chen: That range is very workable. For 50 Sales Cloud Enterprise licenses and 20 Service Cloud licenses, plus Einstein AI, implementation, data migration, and training, you'd be looking at roughly $233,000 in year one. That's well within your approved budget, and it includes everything — no hidden costs.
+
+[02:58] Dr. Torres: That's lower than I expected, honestly. We're also looking at Microsoft Dynamics 365. Their bundling with our existing Microsoft licenses makes the pricing attractive, but I'm not convinced their healthcare capabilities are mature enough.
+
+[03:14] Alex Chen: That's a fair comparison. Dynamics is strong in the Microsoft ecosystem, but for healthcare specifically, Health Cloud was purpose-built — HIPAA compliance out of the box, clinical data models, care plan management, and patient timeline views that Dynamics requires extensive customization to replicate. We also have FedRAMP authorization and SOC 2 Type II, which matters for your compliance audit.
+
+[03:42] Dr. Torres: You're making a strong case. Here's what I'd like as next steps: can you send me a detailed phased migration proposal? And I'd like to arrange a technical deep-dive with my IT architecture team — probably 4-5 people. Also, if you have reference customers in healthcare, specifically health systems with 2,000 to 5,000 beds, that would go a long way with my CFO.
+
+[04:08] Alex Chen: Absolutely. I'll have the phased migration proposal to you within 48 hours. I'll also include the Baptist Health case study — they're a 2,800-bed system that did this exact migration. For the technical deep-dive, how does next Tuesday or Wednesday work for your team?
+
+[04:25] Dr. Torres: Wednesday afternoon would be ideal. Let's say 2 PM Eastern.
+
+[04:30] Alex Chen: Perfect, I'll send the calendar invite today. Thank you for your time, Dr. Torres. I'm confident we can make this transition smooth for MedVista.
+
+[04:38] Dr. Torres: Thank you, Alex. Looking forward to the proposal. Goodbye.
+
+[04:42] Alex Chen: Goodbye.`;
+
+// ══════════════════════════════════════════════════════════
 // OPS — Invoice (pre-cached for demo)
 // ══════════════════════════════════════════════════════════
 
-export const DEMO_INVOICE = {
-  items: [
-    { description: "Salesforce Sales Cloud Enterprise — 50 user licenses (Annual)", quantity: 50, unitPrice: 1980.00 },
-    { description: "Salesforce Service Cloud Professional — 20 user licenses (Annual)", quantity: 20, unitPrice: 960.00 },
-    { description: "Einstein AI Add-on — 50 seats (Annual)", quantity: 50, unitPrice: 600.00 },
-    { description: "Implementation & Configuration Services", quantity: 1, unitPrice: 45000.00 },
-    { description: "Data Migration & Integration (SAP, Legacy CRM)", quantity: 1, unitPrice: 28000.00 },
-    { description: "Training Program — Admin + End User (40 hours)", quantity: 1, unitPrice: 12000.00 },
-  ],
+// # line items for MedVista deal based on call discussion
+const DEMO_INVOICE_ITEMS = [
+  { description: "Salesforce Sales Cloud Enterprise — 50 user licenses (Annual)", quantity: 50, unitPrice: 1980.00 },
+  { description: "Salesforce Service Cloud Professional — 20 user licenses (Annual)", quantity: 20, unitPrice: 960.00 },
+  { description: "Einstein AI Add-on — 50 seats (Annual)", quantity: 50, unitPrice: 600.00 },
+  { description: "Implementation & Configuration Services", quantity: 1, unitPrice: 45000.00 },
+  { description: "Data Migration & Integration (SAP, Legacy CRM)", quantity: 1, unitPrice: 28000.00 },
+  { description: "Training Program — Admin + End User (40 hours)", quantity: 1, unitPrice: 12000.00 },
+];
+
+// # full invoice object with ID, prospect info, and computed total
+export const DEMO_INVOICE_FULL: Invoice = {
+  id: "INV-2026-0001",
+  prospectId: "p1",
+  companyName: "MedVista Health Systems",
+  contactName: "Dr. Rachel Torres",
+  items: DEMO_INVOICE_ITEMS,
+  total: DEMO_INVOICE_ITEMS.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+  createdAt: new Date().toISOString(),
 };
+
+// # keep old export for backwards compat
+export const DEMO_INVOICE = { items: DEMO_INVOICE_ITEMS };
 
 // ══════════════════════════════════════════════════════════
 // CLOSER — Sales Analysis (pre-cached)
@@ -409,6 +462,20 @@ export const DEMO_SALES_ANALYSIS = {
     "Compliance audit in Q2 2027 is creating urgency — they need the new system live before the audit or they face regulatory findings",
     "Torres personally prefers Salesforce but needs 'air cover' — wants customer references from health systems of similar size (2,000-5,000 beds)",
   ],
+};
+
+// ══════════════════════════════════════════════════════════
+// CLOSER — Call Record (structured result from transcript analysis)
+// # defined after DEMO_SALES_ANALYSIS so we can reference it
+// ══════════════════════════════════════════════════════════
+
+export const DEMO_CALL_RECORD: CallRecord = {
+  prospectId: "p1",
+  transcript: DEMO_CALL_TRANSCRIPT,
+  duration: 282,
+  outcome: "interested",
+  summary: DEMO_SALES_ANALYSIS.summary,
+  nextAction: DEMO_SALES_ANALYSIS.nextAction,
 };
 
 // ══════════════════════════════════════════════════════════

@@ -2,7 +2,7 @@
 
 import { NextRequest } from "next/server";
 import { runPipeline, analyzeCallResult } from "@/agents/orchestrator";
-import { DEMO_MODE, DEMO_PROSPECTS, DEMO_EMAILS, DEMO_EMAIL_QA } from "@/lib/demo-data";
+import { DEMO_MODE, DEMO_PROSPECTS, DEMO_EMAILS, DEMO_EMAIL_QA, DEMO_CALL_RECORD, DEMO_SALES_ANALYSIS, DEMO_INVOICE_FULL } from "@/lib/demo-data";
 import type { Prospect } from "@/lib/types";
 
 // # realistic delay for demo mode
@@ -122,17 +122,47 @@ async function runDemoPipeline(
   send({ type: "agent_event", payload: { agent: "emailqa", status: "done", message: `${approved.length} emails approved & sent — ${flagged.length} held for review (${flagged.map(f => f.verdict.replace("_", " ")).join(", ")})`, timestamp: Date.now() } });
   await wait(1000);
 
-  // ═══ STAGE 3: CLOSER (call ready) ═══
+  // ═══ STAGE 3: CLOSER — auto-dial + analyze call transcript ═══
   send({ type: "stage_change", payload: { stage: "calling" } });
-  send({ type: "agent_event", payload: { agent: "sales", status: "thinking", message: `Preparing warm call script for top prospect: ${prospects[0].contactName} — CIO at ${prospects[0].companyName}...`, timestamp: Date.now() } });
+  send({ type: "agent_event", payload: { agent: "sales", status: "thinking", message: `Initiating AI voice call to ${prospects[0].contactName} — CIO at ${prospects[0].companyName}...`, timestamp: Date.now() } });
+  await wait(2500);
+
+  send({ type: "agent_event", payload: { agent: "sales", status: "working", message: `Call connected — AI sales agent speaking with ${prospects[0].contactName}...`, timestamp: Date.now() } });
   await wait(3000);
 
-  send({ type: "agent_event", payload: { agent: "sales", status: "done", message: `Voice call ready for ${prospects[0].contactName} at ${prospects[0].companyName}`, timestamp: Date.now() } });
-  send({ type: "call_ready", payload: { prospect: prospects[0], callScript: `Hi ${prospects[0].contactName}, this is ${senderName} from Salesforce. I just sent you an email about how we could help ${prospects[0].companyName} modernize your CRM and unify patient data across your facilities. I know you're evaluating options for FY2027 — do you have a quick minute to discuss how Health Cloud could fit into your digital transformation?`, agentId: "" } });
+  send({ type: "agent_event", payload: { agent: "sales", status: "working", message: "Call in progress — discussing Health Cloud capabilities and migration timeline...", timestamp: Date.now() } });
+  await wait(3000);
+
+  send({ type: "agent_event", payload: { agent: "sales", status: "working", message: "Call completed (4m 42s) — analyzing transcript with AI...", timestamp: Date.now() } });
+  await wait(2500);
+
+  // # send call record + analysis
+  send({ type: "stage_change", payload: { stage: "selling" } });
+  send({ type: "agent_event", payload: { agent: "sales", status: "working", message: `Deal classified: INTERESTED — ${DEMO_SALES_ANALYSIS.keyInsights.length} key insights extracted`, timestamp: Date.now() } });
+  await wait(2000);
+
+  send({ type: "call", payload: { call: DEMO_CALL_RECORD } });
+  send({ type: "agent_event", payload: { agent: "sales", status: "done", message: `Call analysis complete — ${prospects[0].contactName} is interested. Budget: $250-400K pre-approved. Next: send phased migration proposal within 48 hours`, timestamp: Date.now() } });
   await wait(1000);
 
-  // ═══ DONE ═══
-  send({ type: "agent_event", payload: { agent: "router", status: "done", message: `Pipeline complete — ${prospects.length} leads found, ${approved.length} emails sent, ${flagged.length} held for QA review, call ready`, timestamp: Date.now() } });
+  // ═══ STAGE 4: OPS — auto-generate invoice ═══
+  send({ type: "stage_change", payload: { stage: "closing" } });
+  send({ type: "agent_event", payload: { agent: "admin", status: "thinking", message: "Generating invoice based on deal parameters discussed in call...", timestamp: Date.now() } });
+  await wait(2500);
+
+  send({ type: "agent_event", payload: { agent: "admin", status: "working", message: `Building line items: ${DEMO_INVOICE_FULL.items.length} products/services for ${DEMO_INVOICE_FULL.companyName}...`, timestamp: Date.now() } });
+  await wait(2000);
+
+  send({ type: "agent_event", payload: { agent: "admin", status: "working", message: `Invoice ${DEMO_INVOICE_FULL.id} generated — Total: $${DEMO_INVOICE_FULL.total.toLocaleString()}`, timestamp: Date.now() } });
+  await wait(1500);
+
+  send({ type: "invoice", payload: { invoice: DEMO_INVOICE_FULL, pdfDataUrl: "" } });
+  send({ type: "agent_event", payload: { agent: "admin", status: "done", message: `Invoice ${DEMO_INVOICE_FULL.id} ready for ${DEMO_INVOICE_FULL.companyName} — $${DEMO_INVOICE_FULL.total.toLocaleString()}`, timestamp: Date.now() } });
+  await wait(1000);
+
+  // ═══ PIPELINE COMPLETE — all 5 agents finished ═══
+  send({ type: "stage_change", payload: { stage: "complete" } });
+  send({ type: "agent_event", payload: { agent: "router", status: "done", message: `Pipeline complete — ${prospects.length} leads found, ${approved.length} emails sent, ${flagged.length} held for QA, call analyzed (interested), invoice generated ($${DEMO_INVOICE_FULL.total.toLocaleString()})`, timestamp: Date.now() } });
   send({ type: "done", payload: {} });
 }
 
