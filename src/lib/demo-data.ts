@@ -33,57 +33,49 @@ export const DEMO_BRAND_PROFILE = {
 // ══════════════════════════════════════════════════════════
 
 export const DEMO_PROSPECTS = [
-  {
-    id: "p1", companyName: "MedVista Health Systems", contactName: "Dr. Rachel Torres", title: "Chief Information Officer",
-    email: "r.torres@medvista.com", emailVerified: true, website: "https://medvista.com",
-    industry: "Healthcare", location: "Boston, MA", employeeCount: 2800, linkedinUrl: "https://linkedin.com/in/racheltorres",
-    fitReason: "Large healthcare system still running Siebel CRM from 2012. Recently posted RFP for CRM modernization. $4.2B annual revenue — strong budget for enterprise CRM transformation.", score: 95, status: "new" as const,
-  },
-  {
-    id: "p2", companyName: "Pinnacle Financial Group", contactName: "James Whitfield", title: "SVP of Sales Operations",
-    email: "jwhitfield@pinnaclefg.com", emailVerified: true, website: "https://pinnaclefg.com",
-    industry: "Financial Services", location: "Charlotte, NC", employeeCount: 1200, linkedinUrl: "https://linkedin.com/in/jameswhitfield",
-    fitReason: "Financial services firm using HubSpot — outgrowing it as they scale their wealth management division. SVP of Sales Ops is the classic Salesforce buyer persona with budget authority.", score: 91, status: "new" as const,
-  },
-  {
-    id: "p3", companyName: "Atlas Manufacturing Co.", contactName: "Linda Nakamura", title: "VP of Digital Transformation",
-    email: "l.nakamura@atlasmfg.com", emailVerified: true, website: "https://atlasmfg.com",
-    industry: "Manufacturing", location: "Detroit, MI", employeeCount: 4500, linkedinUrl: "https://linkedin.com/in/lindanakamura",
-    fitReason: "Traditional manufacturer undergoing digital transformation. VP role was created 6 months ago — signals executive commitment and budget. Currently using spreadsheets and SAP for customer management.", score: 88, status: "new" as const,
-  },
-  {
-    id: "p4", companyName: "Velocity Retail Group", contactName: "Carlos Mendez", title: "Chief Revenue Officer",
-    email: "carlos.mendez@velocityretail.com", emailVerified: true, website: "https://velocityretail.com",
-    industry: "Retail / E-Commerce", location: "Miami, FL", employeeCount: 850, linkedinUrl: "https://linkedin.com/in/carlosmendez",
-    fitReason: "Omnichannel retailer with 120+ stores and growing DTC business. CRO recently spoke at NRF about unifying online and in-store customer data — exact use case for Commerce Cloud + Data Cloud.", score: 86, status: "new" as const,
-  },
-  {
-    id: "p5", companyName: "Stratos Cloud Solutions", contactName: "Priya Sharma", title: "CEO & Founder",
-    email: "priya@stratoscloud.io", emailVerified: true, website: "https://stratoscloud.io",
-    industry: "Technology / SaaS", location: "San Francisco, CA", employeeCount: 180, linkedinUrl: "https://linkedin.com/in/priyasharma",
-    fitReason: "Fast-growing SaaS company that just raised Series B ($45M). Scaling sales team from 12 to 40 reps this year — urgent need for enterprise CRM. Currently using a patchwork of Pipedrive + spreadsheets.", score: 83, status: "new" as const,
-  },
-  {
-    id: "p6", companyName: "GreenEdge Energy", contactName: "Tom Blackwell", title: "Director of Sales",
-    email: "t.blackwell@greenedge-energy.com", emailVerified: true, website: "https://greenedge-energy.com",
-    industry: "Energy / Cleantech", location: "Denver, CO", employeeCount: 320, linkedinUrl: "https://linkedin.com/in/tomblackwell",
-    fitReason: "Renewable energy company with complex B2B sales cycles (6-18 months). Current CRM can't handle multi-stakeholder deal tracking. Director of Sales has decision authority and is actively evaluating solutions.", score: 79, status: "new" as const,
-  },
-  {
-    id: "p7", companyName: "Meridian Insurance Partners", contactName: "Sarah O'Brien", title: "Head of Client Experience",
-    email: "sobrien@meridianins.com", emailVerified: false, website: "https://meridianins.com",
-    industry: "Insurance", location: "Chicago, IL", employeeCount: 680, linkedinUrl: "https://linkedin.com/in/sarahobrien",
-    fitReason: "Insurance brokerage losing clients to digital-first competitors. Head of Client Experience is focused on improving renewal rates and cross-sell — perfect Service Cloud + Marketing Cloud use case.", score: 74, status: "new" as const,
-  },
+  // ── Tier 1: Excellent fit (score 90-98) ──
+  { id: "p1", companyName: "MedVista Health Systems", contactName: "Dr. Rachel Torres", title: "Chief Information Officer", email: "r.torres@medvista.com", emailVerified: true, website: "https://medvista.com", industry: "Healthcare", location: "Boston, MA", employeeCount: 2800, linkedinUrl: "https://linkedin.com/in/racheltorres", fitReason: "Large healthcare system still running Siebel CRM from 2012. Recently posted RFP for CRM modernization. $4.2B annual revenue.", score: 98, status: "new" as const },
+  { id: "p2", companyName: "Pinnacle Financial Group", contactName: "James Whitfield", title: "SVP of Sales Operations", email: "jwhitfield@pinnaclefg.com", emailVerified: true, website: "https://pinnaclefg.com", industry: "Financial Services", location: "Charlotte, NC", employeeCount: 1200, linkedinUrl: "https://linkedin.com/in/jameswhitfield", fitReason: "Outgrowing HubSpot as they scale wealth management division. SVP has budget authority and is actively evaluating.", score: 95, status: "new" as const },
+  { id: "p3", companyName: "Atlas Manufacturing Co.", contactName: "Linda Nakamura", title: "VP of Digital Transformation", email: "l.nakamura@atlasmfg.com", emailVerified: true, website: "https://atlasmfg.com", industry: "Manufacturing", location: "Detroit, MI", employeeCount: 4500, linkedinUrl: "https://linkedin.com/in/lindanakamura", fitReason: "VP of Digital Transformation role created 6 months ago — executive commitment + budget. Using spreadsheets and SAP.", score: 93, status: "new" as const },
+  { id: "p4", companyName: "Velocity Retail Group", contactName: "Carlos Mendez", title: "Chief Revenue Officer", email: "carlos.mendez@velocityretail.com", emailVerified: true, website: "https://velocityretail.com", industry: "Retail / E-Commerce", location: "Miami, FL", employeeCount: 850, linkedinUrl: "https://linkedin.com/in/carlosmendez", fitReason: "120+ stores, growing DTC. CRO spoke at NRF about unifying customer data — exact Commerce Cloud + Data Cloud use case.", score: 92, status: "new" as const },
+  { id: "p5", companyName: "NovaCare Pharmaceuticals", contactName: "Dr. Henrik Larsen", title: "Head of Commercial Operations", email: "h.larsen@novacarepharma.com", emailVerified: true, website: "https://novacarepharma.com", industry: "Pharmaceuticals", location: "Philadelphia, PA", employeeCount: 3200, linkedinUrl: "https://linkedin.com/in/henriklarsen", fitReason: "Pharma company managing 400+ HCP relationships on legacy Oracle CX. Compliance team flagged CRM for audit gaps. $1.8B revenue.", score: 91, status: "new" as const },
+  { id: "p6", companyName: "Apex Logistics International", contactName: "Maria Santos", title: "CTO", email: "m.santos@apexlogistics.com", emailVerified: true, website: "https://apexlogistics.com", industry: "Logistics / Supply Chain", location: "Dallas, TX", employeeCount: 5200, linkedinUrl: "https://linkedin.com/in/mariasantos", fitReason: "Global logistics firm with 12 regional offices. Customer data fragmented across 6 different systems. CTO mandated single platform.", score: 90, status: "new" as const },
+  // ── Tier 2: Strong fit (score 80-89) ──
+  { id: "p7", companyName: "Stratos Cloud Solutions", contactName: "Priya Sharma", title: "CEO & Founder", email: "priya@stratoscloud.io", emailVerified: true, website: "https://stratoscloud.io", industry: "Technology / SaaS", location: "San Francisco, CA", employeeCount: 180, linkedinUrl: "https://linkedin.com/in/priyasharma", fitReason: "Series B ($45M). Scaling sales from 12 to 40 reps. Using Pipedrive + spreadsheets — urgent CRM need.", score: 89, status: "new" as const },
+  { id: "p8", companyName: "Citadel Property Management", contactName: "Robert Chen", title: "VP of Operations", email: "r.chen@citadelproperty.com", emailVerified: true, website: "https://citadelproperty.com", industry: "Real Estate", location: "Los Angeles, CA", employeeCount: 920, linkedinUrl: "https://linkedin.com/in/robertchen", fitReason: "Managing 15,000+ units across 8 states. Tenant relationships tracked in Excel. Recently hired VP Ops to professionalize.", score: 88, status: "new" as const },
+  { id: "p9", companyName: "BlueWave Telecommunications", contactName: "Karen Mitchell", title: "Director of Enterprise Sales", email: "k.mitchell@bluewavetelecom.com", emailVerified: true, website: "https://bluewavetelecom.com", industry: "Telecommunications", location: "Atlanta, GA", employeeCount: 2100, linkedinUrl: "https://linkedin.com/in/karenmitchell", fitReason: "Telecom provider with complex B2B contracts. Current CRM can't handle multi-year deal structures or usage-based billing.", score: 87, status: "new" as const },
+  { id: "p10", companyName: "GreenEdge Energy", contactName: "Tom Blackwell", title: "Director of Sales", email: "t.blackwell@greenedge-energy.com", emailVerified: true, website: "https://greenedge-energy.com", industry: "Energy / Cleantech", location: "Denver, CO", employeeCount: 320, linkedinUrl: "https://linkedin.com/in/tomblackwell", fitReason: "Renewable energy with 6-18 month B2B sales cycles. CRM can't handle multi-stakeholder deal tracking.", score: 86, status: "new" as const },
+  { id: "p11", companyName: "Summit Education Group", contactName: "Dr. Amanda Foster", title: "Chief Academic Officer", email: "a.foster@summitedu.org", emailVerified: true, website: "https://summitedu.org", industry: "Education", location: "Nashville, TN", employeeCount: 1500, linkedinUrl: "https://linkedin.com/in/amandafoster", fitReason: "University group with 45,000 students. Enrollment management spread across 4 systems. Looking at Education Cloud.", score: 85, status: "new" as const },
+  { id: "p12", companyName: "Ironclad Defense Systems", contactName: "Col. Mark Davidson (Ret.)", title: "VP of Business Development", email: "m.davidson@ironcladdefense.com", emailVerified: true, website: "https://ironcladdefense.com", industry: "Defense / Government", location: "Arlington, VA", employeeCount: 780, linkedinUrl: "https://linkedin.com/in/markdavidson", fitReason: "Defense contractor needing FedRAMP-compliant CRM. Currently using custom Access databases. Government Cloud is the play.", score: 84, status: "new" as const },
+  { id: "p13", companyName: "Meridian Insurance Partners", contactName: "Sarah O'Brien", title: "Head of Client Experience", email: "sobrien@meridianins.com", emailVerified: true, website: "https://meridianins.com", industry: "Insurance", location: "Chicago, IL", employeeCount: 680, linkedinUrl: "https://linkedin.com/in/sarahobrien", fitReason: "Insurance brokerage losing clients to digital-first competitors. Focused on renewal rates and cross-sell.", score: 83, status: "new" as const },
+  { id: "p14", companyName: "Pacific Rim Trading Co.", contactName: "David Tanaka", title: "COO", email: "d.tanaka@pacificrimtrading.com", emailVerified: true, website: "https://pacificrimtrading.com", industry: "Import / Export", location: "Seattle, WA", employeeCount: 420, linkedinUrl: "https://linkedin.com/in/davidtanaka", fitReason: "International trading firm managing 200+ supplier and buyer relationships across 14 countries. Need multi-currency CRM.", score: 82, status: "new" as const },
+  { id: "p15", companyName: "Beacon Hospitality Group", contactName: "Sophia Laurent", title: "VP of Revenue Management", email: "s.laurent@beaconhospitality.com", emailVerified: true, website: "https://beaconhospitality.com", industry: "Hospitality", location: "Las Vegas, NV", employeeCount: 3800, linkedinUrl: "https://linkedin.com/in/sophialaurent", fitReason: "Hotel chain with 28 properties. Guest data siloed per property. VP Revenue wants unified guest profiles + loyalty tracking.", score: 81, status: "new" as const },
+  { id: "p16", companyName: "ClearPath Biotech", contactName: "Dr. Yuki Taniguchi", title: "VP of Partnerships", email: "y.taniguchi@clearpathbio.com", emailVerified: true, website: "https://clearpathbio.com", industry: "Biotechnology", location: "Cambridge, MA", employeeCount: 290, linkedinUrl: "https://linkedin.com/in/yukitaniguchi", fitReason: "Biotech managing complex pharma partnership pipeline. Using Notion + spreadsheets. Need Life Sciences Cloud.", score: 80, status: "new" as const },
+  // ── Tier 3: Good fit (score 70-79) ──
+  { id: "p17", companyName: "TrueNorth Financial Advisors", contactName: "Michael Brennan", title: "Managing Director", email: "m.brennan@truenorthfa.com", emailVerified: true, website: "https://truenorthfa.com", industry: "Financial Services", location: "New York, NY", employeeCount: 150, linkedinUrl: "https://linkedin.com/in/michaelbrennan", fitReason: "Wealth advisory managing $2.3B AUM. Client relationships tracked in Wealthbox — scaling beyond it.", score: 79, status: "new" as const },
+  { id: "p18", companyName: "Orion Construction Group", contactName: "Steve Petrov", title: "Director of Client Services", email: "s.petrov@orionconstruction.com", emailVerified: true, website: "https://orionconstruction.com", industry: "Construction", location: "Phoenix, AZ", employeeCount: 640, linkedinUrl: "https://linkedin.com/in/stevepetrov", fitReason: "Commercial construction firm tracking $340M in active projects. Client and subcontractor management is manual.", score: 78, status: "new" as const },
+  { id: "p19", companyName: "Harmony Health Plans", contactName: "Lisa Washington", title: "SVP of Member Experience", email: "l.washington@harmonyhp.com", emailVerified: false, website: "https://harmonyhp.com", industry: "Health Insurance", location: "Minneapolis, MN", employeeCount: 1800, linkedinUrl: "https://linkedin.com/in/lisawashington", fitReason: "Health plan serving 400K members. Member experience team using 3 disconnected tools for engagement tracking.", score: 77, status: "new" as const },
+  { id: "p20", companyName: "Quantum Automotive Parts", contactName: "Jake Morrison", title: "Head of B2B Sales", email: "j.morrison@quantumauto.com", emailVerified: true, website: "https://quantumauto.com", industry: "Automotive", location: "Cleveland, OH", employeeCount: 510, linkedinUrl: "https://linkedin.com/in/jakemorrison", fitReason: "Auto parts distributor with 2,000+ dealer relationships. Order management and dealer portal both need CRM backbone.", score: 76, status: "new" as const },
+  { id: "p21", companyName: "Sterling Media Group", contactName: "Emma Richardson", title: "Chief Commercial Officer", email: "e.richardson@sterlingmedia.com", emailVerified: true, website: "https://sterlingmedia.com", industry: "Media / Advertising", location: "New York, NY", employeeCount: 340, linkedinUrl: "https://linkedin.com/in/emmarichardson", fitReason: "Media company managing 150+ advertiser accounts. Using Salesforce competitor (Monday CRM) — open to switching.", score: 75, status: "new" as const },
+  { id: "p22", companyName: "Evergreen Senior Living", contactName: "Patricia Flores", title: "VP of Community Relations", email: "p.flores@evergreenliving.com", emailVerified: true, website: "https://evergreenliving.com", industry: "Senior Care", location: "Tampa, FL", employeeCount: 2200, linkedinUrl: "https://linkedin.com/in/patriciaflores", fitReason: "Senior living operator with 35 communities. Resident and family engagement scattered across tools.", score: 74, status: "new" as const },
+  { id: "p23", companyName: "Nexus Cybersecurity", contactName: "Alex Volkov", title: "VP of Sales", email: "a.volkov@nexuscyber.com", emailVerified: true, website: "https://nexuscyber.com", industry: "Cybersecurity", location: "Austin, TX", employeeCount: 260, linkedinUrl: "https://linkedin.com/in/alexvolkov", fitReason: "Cybersecurity firm selling to enterprise. Complex deal cycles with multiple stakeholders. Outgrowing Zoho.", score: 73, status: "new" as const },
+  { id: "p24", companyName: "Continental Freight Services", contactName: "Dan Murphy", title: "Director of Commercial", email: "d.murphy@continentalfreight.com", emailVerified: true, website: "https://continentalfreight.com", industry: "Transportation", location: "Memphis, TN", employeeCount: 1100, linkedinUrl: "https://linkedin.com/in/danmurphy", fitReason: "Freight company with 800+ shipper accounts. Pricing and contract management done manually in spreadsheets.", score: 72, status: "new" as const },
+  { id: "p25", companyName: "Solaris Wealth Management", contactName: "Catherine Park", title: "COO", email: "c.park@solariswm.com", emailVerified: true, website: "https://solariswm.com", industry: "Financial Services", location: "San Diego, CA", employeeCount: 85, linkedinUrl: "https://linkedin.com/in/catherinepark", fitReason: "RIA managing $890M AUM. Growing fast, needs compliant CRM for SEC reporting and client lifecycle.", score: 71, status: "new" as const },
+  // ── Tier 4: Moderate fit (score 60-69) ──
+  { id: "p26", companyName: "Pioneer Agriculture Tech", contactName: "Bill Henderson", title: "Sales Manager", email: "b.henderson@pioneeragtech.com", emailVerified: false, website: "https://pioneeragtech.com", industry: "Agriculture", location: "Des Moines, IA", employeeCount: 190, linkedinUrl: "https://linkedin.com/in/billhenderson", fitReason: "AgTech startup selling to farms and co-ops. Basic CRM needs but growing quickly. Budget conscious.", score: 68, status: "new" as const },
+  { id: "p27", companyName: "Cascade Environmental", contactName: "Julia Chen", title: "Business Development Lead", email: "j.chen@cascadeenv.com", emailVerified: true, website: "https://cascadeenv.com", industry: "Environmental Services", location: "Portland, OR", employeeCount: 145, linkedinUrl: "https://linkedin.com/in/juliachen", fitReason: "Environmental consulting firm with long project-based sales. Currently on Freshsales but needs more customization.", score: 66, status: "new" as const },
+  { id: "p28", companyName: "Vanguard Legal Associates", contactName: "Richard Osei", title: "Managing Partner", email: "r.osei@vanguardlegal.com", emailVerified: true, website: "https://vanguardlegal.com", industry: "Legal Services", location: "Washington, DC", employeeCount: 95, linkedinUrl: "https://linkedin.com/in/richardosei", fitReason: "Law firm managing 300+ client relationships across 5 practice areas. Using Clio but want better business development tracking.", score: 64, status: "new" as const },
+  { id: "p29", companyName: "Alpine Sports Retail", contactName: "Natasha Kramer", title: "Head of E-Commerce", email: "n.kramer@alpinesports.com", emailVerified: true, website: "https://alpinesports.com", industry: "Retail / Sports", location: "Boulder, CO", employeeCount: 220, linkedinUrl: "https://linkedin.com/in/natashakramer", fitReason: "Outdoor sports retailer with 18 stores and fast-growing online. Need unified customer view across channels.", score: 62, status: "new" as const },
+  { id: "p30", companyName: "Redwood Analytics Corp", contactName: "Kevin Patel", title: "VP of Growth", email: "k.patel@redwoodanalytics.com", emailVerified: false, website: "https://redwoodanalytics.com", industry: "Data Analytics", location: "Raleigh, NC", employeeCount: 110, linkedinUrl: "https://linkedin.com/in/kevinpatel", fitReason: "Data analytics startup selling to mid-market. Using free HubSpot tier. Need to professionalize sales ops before Series A.", score: 60, status: "new" as const },
 ];
 
 export const DEMO_LEAD_SUMMARY = {
-  totalLeads: 7,
-  verifiedEmails: 6,
-  avgScore: 85,
-  topIndustries: ["Healthcare", "Financial Services", "Manufacturing", "Retail / E-Commerce", "Technology / SaaS"],
-  topLocations: ["Boston, MA", "Charlotte, NC", "Detroit, MI", "San Francisco, CA", "Denver, CO"],
-  scoreBreakdown: { excellent: 4, good: 3, fair: 0 },
+  totalLeads: 30,
+  verifiedEmails: 27,
+  avgScore: 79,
+  topIndustries: ["Healthcare", "Financial Services", "Manufacturing", "Technology / SaaS", "Retail / E-Commerce", "Telecommunications", "Energy / Cleantech", "Pharmaceuticals"],
+  topLocations: ["New York, NY", "Boston, MA", "San Francisco, CA", "Dallas, TX", "Chicago, IL", "Los Angeles, CA", "Atlanta, GA", "Philadelphia, PA"],
+  scoreBreakdown: { excellent: 6, good: 10, fair: 14 },
 };
 
 // ══════════════════════════════════════════════════════════
@@ -265,6 +257,135 @@ export const DEMO_EMAILS = [
     to: "l.nakamura@atlasmfg.com", subject: "Digital transformation that the factory floor actually uses",
     body: "Linda,\n\nMost digital transformation initiatives in manufacturing fail not because of the technology, but because the people closest to the customer — sales engineers, field reps, account managers — won't use tools that don't fit their workflow.\n\nI saw that Atlas recently created your VP of Digital Transformation role. That tells me the executive commitment is there, which is half the battle.\n\nThe other half is choosing tools that manufacturing teams will actually adopt. We built our Manufacturing Cloud specifically for this — it handles complex quoting, multi-stakeholder accounts, and forecast visibility across product lines without requiring reps to change how they work.\n\nA 4,500-person manufacturer in your space recently unified their customer data from SAP + spreadsheets into a single view. Their sales team's quote-to-close time dropped from 23 days to 8.\n\nWould it be useful to see how that architecture maps to Atlas's current setup?\n\n{senderName}",
     prospectId: "p3",
+  },
+  {
+    to: "carlos.mendez@velocityretail.com", subject: "Unifying 120 stores into one customer view",
+    body: "Carlos,\n\nI caught your NRF panel on bridging the gap between in-store and online customer data — it's the exact challenge we help retailers solve.\n\nWith 120+ locations and a growing DTC channel, Velocity is generating customer signals from everywhere: POS, e-commerce, loyalty programs, social. The problem isn't the data — it's that it lives in silos that make personalization nearly impossible.\n\nCommerce Cloud + Data Cloud gives you a single customer profile that updates in real time, whether someone browses online, buys in-store, or calls your support team. One of our retail clients with 95 locations saw a 28% lift in cross-channel revenue within 6 months of unifying their data.\n\nWorth a 20-minute call to see if the architecture fits your omnichannel roadmap?\n\n{senderName}",
+    prospectId: "p4",
+  },
+  {
+    to: "h.larsen@novacarepharma.com", subject: "Closing the compliance gaps in your HCP relationships",
+    body: "Dr. Larsen,\n\nManaging 400+ HCP relationships is complex enough without your CRM adding compliance risk. When your compliance team flagged audit gaps in the current Oracle CX setup, they identified a problem that only gets more expensive to fix over time.\n\nLife Sciences Cloud was built specifically for pharma commercial teams — it handles sample tracking, HCP engagement scoring, consent management, and Sunshine Act reporting in one integrated system. No more reconciling data across 4 different tools before an audit.\n\nA pharma company of similar size recently migrated from Oracle CX in 12 weeks and passed their next FDA audit with zero findings — a first for them.\n\nI'd like to understand NovaCare's specific compliance requirements. Would a 25-minute call next week work?\n\n{senderName}",
+    prospectId: "p5",
+  },
+  {
+    to: "m.santos@apexlogistics.com", subject: "One platform for 12 offices and 6 systems",
+    body: "Maria,\n\nWhen a CTO mandates a single customer platform, it usually means the fragmentation has reached a breaking point. Managing customer data across 6 different systems with 12 regional offices isn't just inefficient — it's a data governance risk.\n\nWe've helped several global logistics firms consolidate onto Salesforce. The typical architecture: Sales Cloud for pipeline management, Service Cloud for shipment tracking and customer support, and MuleSoft for real-time integration with your TMS and WMS systems.\n\nOne logistics company with 8 offices went from 6 systems to 1 in 16 weeks. Their customer response time dropped from 4 hours to 12 minutes because every team member finally had the same view of each account.\n\nI'd welcome a technical conversation about integration architecture. Would 30 minutes this week work?\n\n{senderName}",
+    prospectId: "p6",
+  },
+  {
+    to: "priya@stratoscloud.io", subject: "Scaling from 12 reps to 40 without the CRM becoming chaos",
+    body: "Priya,\n\nCongratulations on the Series B — $45M is a strong signal that the market believes in what Stratos is building.\n\nTripling your sales team in a year is exciting but creates a very specific operational risk: what worked with 12 reps breaks at 40. Territory conflicts, inconsistent pipeline stages, no standardized playbook, reps duplicating outreach to the same accounts. Pipedrive + spreadsheets won't hold.\n\nWe've helped 30+ post-Series B SaaS companies set up Salesforce as their scale-ready CRM. The pattern that works best: standardized sales stages, automated lead routing, and Einstein AI forecasting — so you're not just managing more reps, you're giving each one a system that makes them productive from day one.\n\nI know your time is precious. Would a 15-minute intro call be useful, or would you prefer I send over a comparison doc first?\n\n{senderName}",
+    prospectId: "p7",
+  },
+  {
+    to: "r.chen@citadelproperty.com", subject: "15,000 units deserve better than Excel",
+    body: "Robert,\n\nManaging 15,000+ units across 8 states with tenant relationships tracked in spreadsheets is a ticking time bomb — one missed renewal, one lost maintenance request, one compliance oversight, and the cost dwarfs any CRM investment.\n\nAs the new VP of Operations, you're likely under pressure to professionalize fast. Salesforce gives property management teams a complete view of every tenant interaction: leases, maintenance tickets, payment history, communication logs — all in one place.\n\nA property management company with 12,000 units recently moved from Excel to Salesforce. Their lease renewal rate jumped from 68% to 84% in the first year because they finally had automated renewal workflows and proactive tenant engagement.\n\nWould a 20-minute conversation about what this looks like for Citadel make sense?\n\n{senderName}",
+    prospectId: "p8",
+  },
+  {
+    to: "k.mitchell@bluewavetelecom.com", subject: "CRM that handles multi-year telecom contracts",
+    body: "Karen,\n\nEnterprise telecom sales are uniquely complex — multi-year contracts, usage-based pricing tiers, bundled services, and stakeholder committees that can take 6 months to align. Most CRMs were built for simpler deal structures and force your team to work around the tool instead of with it.\n\nSalesforce Communications Cloud was designed specifically for telecom: it handles CPQ (configure-price-quote) for complex bundles, contract lifecycle management, and usage-based billing integration. Your reps can model a 3-year contract with escalating usage tiers in minutes, not hours.\n\nA telecom provider with 1,800 employees reduced their quote generation time from 2 days to 30 minutes after implementing Communications Cloud.\n\nWould it be helpful to see a demo tailored to BlueWave's contract structures?\n\n{senderName}",
+    prospectId: "p9",
+  },
+  {
+    to: "t.blackwell@greenedge-energy.com", subject: "Managing 18-month deal cycles without losing momentum",
+    body: "Tom,\n\nIn renewable energy, losing visibility on a deal at month 9 of an 18-month cycle isn't just frustrating — it's revenue left on the table. When sales cycles are that long, you need a CRM that tracks every stakeholder interaction, automates follow-ups, and gives you pipeline intelligence that predicts which deals are actually going to close.\n\nYour current CRM's limitation with multi-stakeholder tracking is a common pain point in energy sales. Salesforce handles it natively — every contact, every meeting, every document is mapped to the deal and the account, with AI-powered signals that flag when engagement drops.\n\nAn energy company with similar deal cycles went from 35% win rate to 52% after implementing Salesforce with Einstein AI — largely because reps stopped losing deals they'd already invested 6+ months in.\n\n15 minutes to explore whether this fits GreenEdge's process?\n\n{senderName}",
+    prospectId: "p10",
+  },
+];
+
+// ══════════════════════════════════════════════════════════
+// REACH — Email QA Agent Results (cached)
+// # Scans all 10 drafted emails → approves, flags, or requests rewrite
+// ══════════════════════════════════════════════════════════
+
+export type EmailQAVerdict = "approved" | "rewrite_copy" | "needs_personalization" | "flagged_confidential";
+
+export interface EmailQAResult {
+  emailIndex: number;          // # index in DEMO_EMAILS array
+  to: string;                  // # recipient email
+  companyName: string;         // # company being emailed
+  verdict: EmailQAVerdict;     // # what the QA agent decided
+  confidence: number;          // # 0-100 confidence score
+  reason: string;              // # why this verdict
+  suggestions?: string[];      // # specific fixes if not approved
+  autoSent?: boolean;          // # true if approved and auto-sent
+}
+
+export const DEMO_EMAIL_QA: EmailQAResult[] = [
+  {
+    emailIndex: 0, to: "r.torres@medvista.com", companyName: "MedVista Health Systems",
+    verdict: "approved", confidence: 96,
+    reason: "Strong personalization with specific pain points (Siebel, compliance gaps). Healthcare-appropriate tone. Case study relevant to prospect's scale. Clear, low-pressure CTA.",
+    autoSent: true,
+  },
+  {
+    emailIndex: 1, to: "jwhitfield@pinnaclefg.com", companyName: "Pinnacle Financial Group",
+    verdict: "approved", confidence: 93,
+    reason: "Good identification of HubSpot scaling pain. Financial services compliance angle is relevant. Concise and action-oriented CTA. Appropriate formality for SVP.",
+    autoSent: true,
+  },
+  {
+    emailIndex: 2, to: "l.nakamura@atlasmfg.com", companyName: "Atlas Manufacturing Co.",
+    verdict: "approved", confidence: 91,
+    reason: "Excellent opening that addresses adoption risk head-on. Manufacturing Cloud positioning is sharp. Case study metrics (23→8 days) are compelling and specific.",
+    autoSent: true,
+  },
+  {
+    emailIndex: 3, to: "carlos.mendez@velocityretail.com", companyName: "Velocity Retail Group",
+    verdict: "needs_personalization", confidence: 72,
+    reason: "References NRF panel — good touch. But the email doesn't mention Velocity's specific store count (120+) or their DTC growth metrics. Needs 2-3 company-specific data points to stand out from generic retail pitches.",
+    suggestions: [
+      "Add Velocity's Q3 e-commerce revenue growth (publicly reported at 34% YoY)",
+      "Reference their recent loyalty program launch — perfect segue to Data Cloud",
+      "Mention their specific POS vendor for integration credibility",
+    ],
+  },
+  {
+    emailIndex: 4, to: "h.larsen@novacarepharma.com", companyName: "NovaCare Pharmaceuticals",
+    verdict: "approved", confidence: 94,
+    reason: "Compliance-first angle is exactly right for pharma. Sunshine Act and FDA audit references show industry expertise. Appropriate ask (25 min) for senior pharma executive.",
+    autoSent: true,
+  },
+  {
+    emailIndex: 5, to: "m.santos@apexlogistics.com", companyName: "Apex Logistics International",
+    verdict: "approved", confidence: 89,
+    reason: "Technical depth with MuleSoft integration mention is appropriate for CTO audience. Good specificity on response time improvement. Asks for 30 min which is right for a technical conversation.",
+    autoSent: true,
+  },
+  {
+    emailIndex: 6, to: "priya@stratoscloud.io", companyName: "Stratos Cloud Solutions",
+    verdict: "rewrite_copy", confidence: 65,
+    reason: "Tone is too corporate for a startup CEO. The language ('I know your time is precious') feels templated. A founder who just raised $45M wants a peer conversation, not a sales pitch. Also, offering both a call AND a doc is indecisive — pick one CTA.",
+    suggestions: [
+      "Make the tone more direct and founder-to-founder",
+      "Lead with a specific scaling problem, not congratulations",
+      "Single CTA: send the comparison doc (founders prefer async first)",
+      "Remove 'I know your time is precious' — every salesperson says this",
+    ],
+  },
+  {
+    emailIndex: 7, to: "r.chen@citadelproperty.com", companyName: "Citadel Property Management",
+    verdict: "approved", confidence: 90,
+    reason: "Strong opening that creates urgency without fear-mongering. Lease renewal metric (68%→84%) is concrete and compelling. Appropriate for a new VP looking to make quick impact.",
+    autoSent: true,
+  },
+  {
+    emailIndex: 8, to: "k.mitchell@bluewavetelecom.com", companyName: "BlueWave Telecommunications",
+    verdict: "flagged_confidential", confidence: 88,
+    reason: "Email body references internal contract pricing structures and CPQ configuration details that could reveal proprietary pricing methodology if forwarded. Telecom enterprise buyers frequently share vendor emails with procurement committees.",
+    suggestions: [
+      "Remove specific CPQ pricing tier references — keep it outcome-focused",
+      "Replace '3-year contract with escalating usage tiers' with generic mention",
+      "Add a confidentiality-appropriate version that teases capabilities without revealing the playbook",
+    ],
+  },
+  {
+    emailIndex: 9, to: "t.blackwell@greenedge-energy.com", companyName: "GreenEdge Energy",
+    verdict: "approved", confidence: 92,
+    reason: "Long sales cycle empathy is well-done. Win rate improvement (35%→52%) is a strong metric. Pipeline intelligence positioning aligns with Director-level pain points. Good length for energy sector.",
+    autoSent: true,
   },
 ];
 

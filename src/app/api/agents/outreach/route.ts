@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { draftEmail, draftFollowUp, draftEmails, sendDraftedEmail } from "@/agents/outreach";
 import { buildBrandContext } from "@/lib/brand-context";
-import { DEMO_MODE, DEMO_EMAILS } from "@/lib/demo-data";
+import { DEMO_MODE, DEMO_EMAILS, DEMO_EMAIL_QA } from "@/lib/demo-data";
 import type { Prospect, EmailDraft } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
       }
       if (action === "followup") {
         return Response.json({ email: { to: (prospect as Prospect).email, subject: `Re: ${(originalEmail as EmailDraft).subject}`, body: `Hi ${(prospect as Prospect).contactName},\n\nI wanted to follow up on my previous note. I understand things get busy in ${(prospect as Prospect).industry}, so I'll keep this brief.\n\nSince we last connected, we published a new case study from a company similar to ${(prospect as Prospect).companyName} — they consolidated 4 disconnected tools into Salesforce and saw a 34% increase in sales productivity within the first quarter.\n\nWould it be worth a 15-minute call to explore whether we could deliver similar results for your team?\n\nBest,\n${name}`, prospectId: (prospect as Prospect).id } });
+      }
+      // # Email QA agent — returns pre-cached scan results for all drafted emails
+      if (action === "qa-scan") {
+        return Response.json({ results: DEMO_EMAIL_QA });
       }
     }
 

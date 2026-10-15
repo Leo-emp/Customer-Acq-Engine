@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Mail, Phone, FileText, Headphones, Clock, CheckCircle2, AlertCircle, Loader2, Send, Plus, Sparkles } from "lucide-react";
+import { Search, Mail, Phone, FileText, Headphones, Clock, CheckCircle2, AlertCircle, Loader2, Send, Plus, Sparkles, ShieldCheck, AlertTriangle, RefreshCw, Lock } from "lucide-react";
 import LeadList from "./LeadList";
 import EmailPreview from "./EmailPreview";
 import VoiceCall from "./VoiceCall";
@@ -9,6 +9,7 @@ import InvoiceView from "./InvoiceView";
 import SupportChat from "./SupportChat";
 import type { CompanyProfile } from "@/lib/store";
 import type { AgentEvent, AgentRole, AgentStatus, Prospect, EmailDraft, CallRecord, Invoice } from "@/lib/types";
+import type { EmailQAResult } from "@/lib/demo-data";
 
 interface CapAction {
   label: string;
@@ -1078,9 +1079,226 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
         </div>
       )}
 
+      {/* ── EMAIL QA AGENT ── */}
+      {emails.length > 0 && (
+        <EmailQAPanel emails={emails} onAddEmails={onAddEmails} onAddEvent={onAddEvent} />
+      )}
+
       {callProspect && (
         <VoiceCall prospect={callProspect} callScript={callScript} agentId={callAgentId} onCallComplete={onCallComplete} />
       )}
+    </div>
+  );
+}
+
+// ── EMAIL QA AGENT PANEL ──
+// # Scans drafted emails → shows verdict for each → auto-sends approved ones
+function EmailQAPanel({ emails, onAddEmails, onAddEvent }: {
+  emails: EmailDraft[];
+  onAddEmails: (emails: EmailDraft[]) => void;
+  onAddEvent: (event: AgentEvent) => void;
+}) {
+  const [qaResults, setQaResults] = useState<EmailQAResult[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0); // # 0-10, which email we're scanning
+  const [scanComplete, setScanComplete] = useState(false);
+  const [autoSentCount, setAutoSentCount] = useState(0);
+
+  // # verdict styling map
+  const verdictConfig: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
+    approved: { label: "Approved", icon: <CheckCircle2 size={14} />, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    rewrite_copy: { label: "Rewrite Copy", icon: <RefreshCw size={14} />, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    needs_personalization: { label: "Needs Personalization", icon: <AlertTriangle size={14} />, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20" },
+    flagged_confidential: { label: "Confidential Flag", icon: <Lock size={14} />, color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+  };
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    setScanProgress(0);
+    setScanComplete(false);
+    setQaResults([]);
+    setAutoSentCount(0);
+    onAddEvent({ agent: "outreach", status: "working", message: "Email QA Agent scanning all drafted emails...", timestamp: Date.now() });
+
+    // # simulate 3-second scan per email with visual progress
+    const totalEmails = Math.min(emails.length, 10);
+    for (let i = 0; i < totalEmails; i++) {
+      setScanProgress(i + 1);
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+
+    // # fetch cached QA results from API
+    try {
+      const res = await fetch("/api/agents/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "qa-scan" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setQaResults(data.results);
+
+      // # count approved and auto-sent
+      const approved = (data.results as EmailQAResult[]).filter(r => r.verdict === "approved");
+      setAutoSentCount(approved.length);
+
+      // # auto-send approved emails — mark them as sent
+      const autoSentEmails = emails
+        .filter((_, idx) => approved.some(r => r.emailIndex === idx))
+        .map(e => ({ ...e, sentAt: new Date().toISOString() }));
+      if (autoSentEmails.length > 0) {
+        onAddEmails(autoSentEmails);
+      }
+
+      const flagged = (data.results as EmailQAResult[]).filter(r => r.verdict !== "approved").length;
+      onAddEvent({
+        agent: "outreach", status: "done",
+        message: `QA complete: ${approved.length} approved & auto-sent, ${flagged} flagged for review`,
+        timestamp: Date.now(),
+      });
+      setScanComplete(true);
+    } catch (err) {
+      onAddEvent({ agent: "outreach", status: "error", message: err instanceof Error ? err.message : "QA scan failed", timestamp: Date.now() });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="glass-card p-4 border border-purple-500/20">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-purple-400" />
+            <h4 className="text-sm font-semibold text-text-primary">Email QA Agent</h4>
+            <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-[10px] font-medium text-purple-400 border border-purple-500/20">AI Review</span>
+          </div>
+          {scanComplete && (
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="text-emerald-400">{autoSentCount} auto-sent</span>
+              <span className="text-amber-400">{qaResults.filter(r => r.verdict !== "approved").length} flagged</span>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-text-muted mb-3">
+          Scans every drafted email for quality, personalization, and confidential data leaks before sending.
+        </p>
+
+        {/* scan button */}
+        {!isScanning && !scanComplete && (
+          <button onClick={handleScan} disabled={emails.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-medium text-purple-400 hover:bg-purple-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
+            <ShieldCheck size={14} /> Run QA Scan on {Math.min(emails.length, 10)} Emails
+          </button>
+        )}
+
+        {/* scanning animation */}
+        {isScanning && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
+              <Loader2 size={18} className="text-purple-400 animate-spin" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-text-primary">
+                  Scanning email {scanProgress} of {Math.min(emails.length, 10)}...
+                </p>
+                <p className="text-[11px] text-text-muted mt-0.5">
+                  {scanProgress > 0 && emails[scanProgress - 1]
+                    ? `Reviewing: ${emails[scanProgress - 1].to}`
+                    : "Initializing QA agent..."
+                  }
+                </p>
+              </div>
+            </div>
+            {/* progress bar */}
+            <div className="h-1.5 bg-space-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-purple-500 to-violet-500 rounded-full transition-all duration-1000"
+                style={{ width: `${(scanProgress / Math.min(emails.length, 10)) * 100}%` }} />
+            </div>
+            {/* live scan items */}
+            <div className="space-y-1.5">
+              {Array.from({ length: scanProgress }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2 text-[11px] animate-fade-in-up">
+                  {i < scanProgress - 1 ? (
+                    <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <Loader2 size={12} className="text-purple-400 animate-spin flex-shrink-0" />
+                  )}
+                  <span className="text-text-muted truncate">{emails[i]?.to || `Email ${i + 1}`}</span>
+                  {i < scanProgress - 1 && <span className="text-emerald-400 ml-auto flex-shrink-0">Scanned</span>}
+                  {i === scanProgress - 1 && <span className="text-purple-400 ml-auto flex-shrink-0">Scanning...</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* results */}
+        {scanComplete && qaResults.length > 0 && (
+          <div className="space-y-2 mt-3">
+            {/* summary stats */}
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-emerald-400">{qaResults.filter(r => r.verdict === "approved").length}</p>
+                <p className="text-[10px] text-text-muted">Approved</p>
+              </div>
+              <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-amber-400">{qaResults.filter(r => r.verdict === "rewrite_copy").length}</p>
+                <p className="text-[10px] text-text-muted">Rewrite</p>
+              </div>
+              <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-orange-400">{qaResults.filter(r => r.verdict === "needs_personalization").length}</p>
+                <p className="text-[10px] text-text-muted">Personalize</p>
+              </div>
+              <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-rose-400">{qaResults.filter(r => r.verdict === "flagged_confidential").length}</p>
+                <p className="text-[10px] text-text-muted">Flagged</p>
+              </div>
+            </div>
+
+            {/* individual results */}
+            {qaResults.map((result, i) => {
+              const cfg = verdictConfig[result.verdict] || verdictConfig.approved;
+              return (
+                <div key={i} className={`p-3 rounded-lg border ${cfg.border} ${cfg.bg}`}>
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`${cfg.color}`}>{cfg.icon}</span>
+                        <span className="text-sm font-medium text-text-primary truncate">{result.companyName}</span>
+                      </div>
+                      <p className="text-[11px] text-text-muted mt-0.5 truncate">{result.to}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                        {cfg.label}
+                      </span>
+                      <span className="text-[10px] text-text-muted">{result.confidence}%</span>
+                      {result.autoSent && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] text-emerald-400 font-medium">
+                          <Send size={8} /> Sent
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-text-secondary leading-relaxed">{result.reason}</p>
+                  {result.suggestions && result.suggestions.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
+                      {result.suggestions.map((s, j) => (
+                        <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
+                          <span className="text-text-muted mt-0.5">•</span>
+                          <span>{s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
