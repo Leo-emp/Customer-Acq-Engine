@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Mail, Phone, FileText, Headphones, Clock, CheckCircle2, AlertCircle, Loader2, Send, Plus, Sparkles } from "lucide-react";
 import LeadList from "./LeadList";
 import EmailPreview from "./EmailPreview";
@@ -10,6 +10,12 @@ import SupportChat from "./SupportChat";
 import type { CompanyProfile } from "@/lib/store";
 import type { AgentEvent, AgentRole, AgentStatus, Prospect, EmailDraft, CallRecord, Invoice } from "@/lib/types";
 
+interface CapAction {
+  label: string;
+  prompt?: string;
+  action?: string;
+}
+
 interface AgentMeta {
   name: string;
   title: string;
@@ -17,35 +23,70 @@ interface AgentMeta {
   color: string;
   gradient: string;
   borderColor: string;
-  capabilities: string[];
+  capabilities: CapAction[];
   description: string;
 }
 
 const AGENT_META: Record<string, AgentMeta> = {
   research: {
     name: "Scout", title: "Research Agent", icon: <Search size={24} />, color: "text-blue-400", gradient: "from-blue-500 to-cyan-500", borderColor: "border-blue-500/30",
-    capabilities: ["Web search via Serper API", "Lead scoring (0-100)", "Industry classification", "Contact discovery", "Company analysis", "Fit assessment"],
-    description: "Scout autonomously searches the web for potential customers matching your target market. Enter any search query and Scout will find, analyze, and score qualified leads.",
+    capabilities: [
+      { label: "Search for leads", prompt: "Find potential B2B customers in the tech industry" },
+      { label: "Score & rank leads", prompt: "Find and rank the top 10 best-fit companies for our product" },
+      { label: "Industry research", prompt: "Research companies in the healthcare SaaS space" },
+      { label: "Find contacts", prompt: "Find decision makers at enterprise companies" },
+      { label: "Competitor analysis", prompt: "Find companies similar to our competitors' customers" },
+      { label: "Market mapping", prompt: "Map the market landscape for AI automation tools" },
+    ],
+    description: "Scout autonomously searches the web for potential customers matching your target market. Click any action below or type your own query.",
   },
   outreach: {
     name: "Reach", title: "Outreach Agent", icon: <Mail size={24} />, color: "text-amber-400", gradient: "from-amber-500 to-orange-500", borderColor: "border-amber-500/30",
-    capabilities: ["Personalized email drafting", "Email sending via Resend", "Open/click tracking", "Voice call scripts", "ElevenLabs AI voice calls", "Follow-up sequences"],
-    description: "Reach crafts personalized outreach for each prospect. Select a lead and Reach will write a custom email, send it, and optionally initiate an AI voice call via ElevenLabs.",
+    capabilities: [
+      { label: "Draft cold email", action: "draft" },
+      { label: "Send drafted email", action: "send" },
+      { label: "Draft for all leads", action: "draft-all" },
+      { label: "AI voice call", action: "call" },
+      { label: "Write follow-up", action: "followup" },
+      { label: "Batch email campaign", action: "batch" },
+    ],
+    description: "Reach crafts personalized outreach for each prospect. Select a lead below and choose an action to execute.",
   },
   sales: {
     name: "Closer", title: "Sales Agent", icon: <Phone size={24} />, color: "text-emerald-400", gradient: "from-emerald-500 to-green-500", borderColor: "border-emerald-500/30",
-    capabilities: ["Call transcript analysis", "Deal outcome classification", "Objection identification", "Next-step recommendation", "Email reply analysis", "Meeting scheduling"],
-    description: "Closer analyzes conversations — paste a call transcript, email thread, or meeting notes and Closer will classify the deal outcome and recommend next steps.",
+    capabilities: [
+      { label: "Analyze call transcript", action: "transcript" },
+      { label: "Analyze email thread", action: "email-thread" },
+      { label: "Analyze meeting notes", action: "meeting" },
+      { label: "Objection breakdown", action: "objections" },
+      { label: "Win/loss analysis", action: "winloss" },
+      { label: "Generate deal report", action: "report" },
+    ],
+    description: "Closer analyzes conversations and classifies deals. Click an action or paste your content below.",
   },
   admin: {
     name: "Ops", title: "Admin Agent", icon: <FileText size={24} />, color: "text-indigo-400", gradient: "from-indigo-500 to-violet-500", borderColor: "border-indigo-500/30",
-    capabilities: ["Invoice generation", "PDF creation", "Line item calculation", "Contract preparation", "Deal documentation", "Financial summaries"],
-    description: "Ops generates professional invoices with line items. Enter client details and product info — Ops will create the invoice and a downloadable PDF.",
+    capabilities: [
+      { label: "Generate invoice", action: "invoice" },
+      { label: "Download PDF", action: "pdf" },
+      { label: "Edit line items", action: "edit" },
+      { label: "Create proposal", action: "proposal" },
+      { label: "Deal summary", action: "summary" },
+      { label: "Revenue report", action: "revenue" },
+    ],
+    description: "Ops generates professional invoices and documents. Select a prospect or enter details below.",
   },
   support: {
     name: "Assist", title: "Support Agent", icon: <Headphones size={24} />, color: "text-teal-400", gradient: "from-teal-500 to-cyan-500", borderColor: "border-teal-500/30",
-    capabilities: ["Context-aware chat", "Deal history access", "Invoice lookup", "Product knowledge", "Prospect data access", "Multi-turn conversation"],
-    description: "Assist provides intelligent support chat. It uses your product knowledge and deal context to answer any customer question accurately.",
+    capabilities: [
+      { label: "Answer product question", action: "product" },
+      { label: "Check deal status", action: "deal" },
+      { label: "Lookup invoice", action: "invoice" },
+      { label: "Troubleshoot issue", action: "troubleshoot" },
+      { label: "Onboarding help", action: "onboarding" },
+      { label: "Feature request", action: "feature" },
+    ],
+    description: "Assist provides intelligent support chat. Click a quick action or type your question directly.",
   },
 };
 
@@ -85,6 +126,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
   const agentEvents = events.filter((e) => e.agent === role);
   const latestStatus = (agentEvents[agentEvents.length - 1]?.status || "idle") as AgentStatus;
   const statusCfg = STATUS_CONFIG[latestStatus];
+  const [quickAction, setQuickAction] = useState<string>("");
 
   return (
     <div className="space-y-6">
@@ -108,16 +150,21 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
         <p className="text-sm text-text-secondary mt-4 max-w-2xl leading-relaxed">{meta.description}</p>
       </div>
 
-      {/* capabilities + stats row */}
+      {/* quick actions + stats row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 glass-card p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Capabilities</h3>
+          <h3 className="text-sm font-semibold text-text-primary mb-3">Quick Actions</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {meta.capabilities.map((cap, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-space-800 border border-card-border">
-                <CheckCircle2 size={12} className={meta.color} />
-                <span className="text-xs text-text-secondary">{cap}</span>
-              </div>
+              <button key={i} onClick={() => setQuickAction(cap.prompt || cap.action || cap.label)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all cursor-pointer text-left group ${
+                  quickAction === (cap.prompt || cap.action || cap.label)
+                    ? `${meta.borderColor} bg-space-700`
+                    : "border-card-border bg-space-800 hover:bg-space-700 hover:border-space-500"
+                }`}>
+                <Sparkles size={12} className={`${meta.color} flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity`} />
+                <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">{cap.label}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -171,6 +218,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
             onAddProspects={onAddProspects}
             onAddEvent={onAddEvent}
             profile={profile}
+            quickAction={quickAction}
           />
         )}
 
@@ -192,6 +240,7 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
           <SalesTool
             callRecord={callRecord}
             onAddEvent={onAddEvent}
+            quickAction={quickAction}
           />
         )}
 
@@ -249,16 +298,19 @@ export default function AgentPage({ role, events, prospects, emails, callRecord,
 
 // ── STANDALONE TOOLS ──
 
-function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddProspects, onAddEvent, profile }: {
+function ResearchTool({ prospects, activeProspectId, onSelectProspect, onAddProspects, onAddEvent, profile, quickAction }: {
   prospects: Prospect[];
   activeProspectId?: string;
   onSelectProspect: (p: Prospect) => void;
   onAddProspects: (prospects: Prospect[]) => void;
   onAddEvent: (event: AgentEvent) => void;
   profile: CompanyProfile | null;
+  quickAction: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(quickAction || "");
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => { if (quickAction) setQuery(quickAction); }, [quickAction]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,13 +458,23 @@ function OutreachTool({ prospects, emails, callProspect, callScript, callAgentId
   );
 }
 
-function SalesTool({ callRecord, onAddEvent }: {
+function SalesTool({ callRecord, onAddEvent, quickAction }: {
   callRecord: CallRecord | null;
   onAddEvent: (event: AgentEvent) => void;
+  quickAction: string;
 }) {
   const [transcript, setTranscript] = useState("");
   const [prospectName, setProspectName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const placeholders: Record<string, string> = {
+    "transcript": "Paste your call transcript here...",
+    "email-thread": "Paste the email thread here...",
+    "meeting": "Paste your meeting notes here...",
+    "objections": "Paste the conversation — Closer will identify all objections...",
+    "winloss": "Paste deal conversations — Closer will analyze win/loss factors...",
+    "report": "Paste deal details — Closer will generate a structured report...",
+  };
+  const placeholder = placeholders[quickAction] || "Paste your call transcript or conversation here...";
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<{ outcome: string; summary: string; nextAction: string; insights: string[]; pdfDataUrl: string } | null>(null);
 
@@ -453,7 +515,7 @@ function SalesTool({ callRecord, onAddEvent }: {
         </div>
         <textarea
           value={transcript} onChange={(e) => setTranscript(e.target.value)}
-          placeholder="Paste your call transcript or conversation here..."
+          placeholder={placeholder}
           rows={6}
           className="w-full bg-space-800 border border-card-border rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500/50 text-text-primary placeholder:text-text-muted resize-none"
           disabled={isAnalyzing}
