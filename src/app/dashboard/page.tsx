@@ -7,6 +7,7 @@ import AgentPage from "@/components/AgentPage";
 import OverviewDashboard from "@/components/OverviewDashboard";
 import BrandBrain from "@/components/BrandBrain";
 import UserAccount from "@/components/UserAccount";
+import PipelineView from "@/components/PipelineView";
 import SetupModal from "@/components/SetupModal";
 import type { CompanyProfile } from "@/lib/store";
 import { DEMO_MODE, DEMO_BRAND_PROFILE } from "@/lib/demo-data";
@@ -214,7 +215,7 @@ export default function Home() {
           <div className="px-6 py-3 flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold text-text-primary">
-                {activeView === "overview" ? "Dashboard" : activeView === "brandBrain" ? "Brand Brain" : activeView === "account" ? "Account" : undefined}
+                {activeView === "overview" ? "Dashboard" : activeView === "pipeline" ? "Pipeline" : activeView === "brandBrain" ? "Brand Brain" : activeView === "account" ? "Account" : undefined}
               </h1>
               {profile && <p className="text-xs text-text-muted">{profile.companyName} — {profile.valueProposition}</p>}
               {!profile && <p className="text-xs text-text-muted">Set up your Brand Brain to get started</p>}
@@ -252,10 +253,19 @@ export default function Home() {
           {activeView === "brandBrain" && (
             <BrandBrain profile={profile} onUpdateProfile={(p) => { setProfile(p); }} />
           )}
+          {activeView === "pipeline" && (
+            <PipelineView
+              profile={profile}
+              stage={stage}
+              isRunning={isRunning}
+              events={events}
+              onLaunch={handleLaunch}
+            />
+          )}
           {activeView === "account" && (
             <UserAccount />
           )}
-          {activeView !== "overview" && activeView !== "brandBrain" && activeView !== "account" && (
+          {activeView !== "overview" && activeView !== "brandBrain" && activeView !== "account" && activeView !== "pipeline" && (
             <AgentPage
               role={activeView}
               events={events}

@@ -9,9 +9,9 @@ import InvoiceView from "./InvoiceView";
 import SupportChat from "./SupportChat";
 import type { CompanyProfile } from "@/lib/store";
 import type { AgentEvent, AgentRole, AgentStatus, Prospect, EmailDraft, CallRecord, Invoice } from "@/lib/types";
-import { DEMO_MODE, DEMO_SENT_EMAILS, DEMO_FOLLOWUP_EMAILS, DEMO_FOLLOWUP_QA } from "@/lib/demo-data";
+import { DEMO_MODE, DEMO_SENT_EMAILS, DEMO_FOLLOWUP_EMAILS, DEMO_FOLLOWUP_QA, DEMO_CALL_TRANSCRIPT, DEMO_SALES_ANALYSIS } from "@/lib/demo-data";
 import type { EmailQAResult } from "@/lib/demo-data";
-import { DEMO_PIPELINE_QA } from "@/lib/demo-pipeline";
+import { DEMO_PIPELINE_QA, DEMO_PIPELINE_EMAILS } from "@/lib/demo-pipeline";
 import { generateCompetitorPDF, generateIndustryPDF, generateMarketPDF } from "@/lib/pdf";
 
 interface CapAction {
@@ -71,16 +71,12 @@ const AGENT_META: Record<string, AgentMeta> = {
     description: "Closer analyzes conversations and classifies deals. Click an action or paste your content below.",
   },
   admin: {
-    name: "Ops", title: "Admin Agent", icon: <FileText size={24} />, color: "text-indigo-400", gradient: "from-indigo-500 to-violet-500", borderColor: "border-indigo-500/30",
+    name: "Invoice", title: "Invoice Agent", icon: <FileText size={24} />, color: "text-indigo-400", gradient: "from-indigo-500 to-violet-500", borderColor: "border-indigo-500/30",
     capabilities: [
       { label: "Generate invoice", action: "invoice" },
       { label: "Download PDF", action: "pdf" },
-      { label: "Edit line items", action: "edit" },
-      { label: "Create proposal", action: "proposal" },
-      { label: "Deal summary", action: "summary" },
-      { label: "Revenue report", action: "revenue" },
     ],
-    description: "Ops generates professional invoices and documents. Select a prospect or enter details below.",
+    description: "Invoice agent generates professional invoices with AI-calculated line items and PDF export.",
   },
   support: {
     name: "Assist", title: "Support Agent", icon: <Headphones size={24} />, color: "text-teal-400", gradient: "from-teal-500 to-cyan-500", borderColor: "border-teal-500/30",
@@ -936,6 +932,36 @@ function OutreachTool({ prospects, emails, onAddEmails, onAddEvent, profile }: {
     const count = selectedLeads.size;
     onAddEvent({ agent: "outreach", status: "working", message: `Drafting ${count} cold emails...`, timestamp: Date.now() });
 
+    // # demo mode: use cached pipeline emails for all 30 leads
+    if (DEMO_MODE) {
+      const selectedProspects = prospects.filter(p => selectedLeads.has(p.id));
+      const drafts: EmailDraft[] = [];
+      // # stagger output for natural feel
+      for (let i = 0; i < selectedProspects.length; i++) {
+        const p = selectedProspects[i];
+        await new Promise(r => setTimeout(r, 80));
+        // # match by prospectId against pipeline email cache
+        const cached = DEMO_PIPELINE_EMAILS.find(e => e.prospectId === p.id);
+        if (cached) {
+          const senderName = profile?.senderName || "Alex";
+          drafts.push({
+            ...cached,
+            body: cached.body.replace("{senderName}", senderName),
+            sentAt: undefined,
+          } as EmailDraft);
+        }
+        // # progress events every 5 emails
+        if ((i + 1) % 5 === 0 || i === selectedProspects.length - 1) {
+          onAddEvent({ agent: "outreach", status: "working", message: `Drafted ${i + 1} of ${count} emails...`, timestamp: Date.now() });
+        }
+      }
+      setColdDrafts(drafts);
+      onAddEmails(drafts);
+      onAddEvent({ agent: "outreach", status: "done", message: `${drafts.length} cold emails drafted`, timestamp: Date.now() });
+      setIsDrafting(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/agents/outreach", {
         method: "POST",
@@ -1506,9 +1532,10 @@ function SalesTool({ callRecord, onAddEvent, quickAction, profile, prospects }: 
   profile: CompanyProfile | null;
   prospects: Prospect[];
 }) {
-  const [transcript, setTranscript] = useState("");
-  const [prospectName, setProspectName] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  // # pre-fill with demo call transcript so judges see it ready to analyze
+  const [transcript, setTranscript] = useState(DEMO_MODE ? DEMO_CALL_TRANSCRIPT : "");
+  const [prospectName, setProspectName] = useState(DEMO_MODE ? "Dr. Rachel Torres" : "");
+  const [companyName, setCompanyName] = useState(DEMO_MODE ? "MedVista Health Systems" : "");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isCalling, setIsCalling] = useState(false);
   const [callStatus, setCallStatus] = useState<"idle" | "ringing" | "in-progress" | "completed" | "failed">("idle");
@@ -1592,7 +1619,26 @@ function SalesTool({ callRecord, onAddEvent, quickAction, profile, prospects }: 
     if (!transcript.trim()) return;
     setIsAnalyzing(true);
     setResult(null);
-    onAddEvent({ agent: "sales", status: "working", message: "Analyzing conversation...", timestamp: Date.now() });
+    onAddEvent({ agent: "sales", status: "working", message: `Analyzing call with ${prospectName || "prospect"}...`, timestamp: Date.now() });
+
+    // # demo mode: use cached analysis with realistic delay
+    if (DEMO_MODE) {
+      await new Promise(r => setTimeout(r, 1500));
+      onAddEvent({ agent: "sales", status: "working", message: "Extracting key insights from 4m 42s conversation...", timestamp: Date.now() });
+      await new Promise(r => setTimeout(r, 2000));
+      onAddEvent({ agent: "sales", status: "working", message: "Classifying deal outcome and scoring buying signals...", timestamp: Date.now() });
+      await new Promise(r => setTimeout(r, 1500));
+      setResult({
+        outcome: DEMO_SALES_ANALYSIS.outcome,
+        summary: DEMO_SALES_ANALYSIS.summary,
+        nextAction: DEMO_SALES_ANALYSIS.nextAction,
+        insights: DEMO_SALES_ANALYSIS.keyInsights,
+        pdfDataUrl: "",
+      });
+      onAddEvent({ agent: "sales", status: "done", message: `Deal classified: ${DEMO_SALES_ANALYSIS.outcome} — budget $250-400K confirmed, 6 key insights extracted`, timestamp: Date.now() });
+      setIsAnalyzing(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/agents/sales", {
@@ -1685,7 +1731,7 @@ function SalesTool({ callRecord, onAddEvent, quickAction, profile, prospects }: 
         />
         <button type="submit" disabled={!transcript.trim() || isAnalyzing}
           className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
-          {isAnalyzing ? (<><Loader2 size={16} className="animate-spin" /> Analyzing...</>) : (<><Phone size={16} /> Analyze Deal</>)}
+          {isAnalyzing ? (<><Loader2 size={16} className="animate-spin" /> Analyzing Call...</>) : (<><Phone size={16} /> Analyze Call</>)}
         </button>
       </form>
 
@@ -1809,23 +1855,6 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
 
   return (
     <div className="space-y-4">
-      {/* quick-select from prospects */}
-      {prospects.length > 0 && (
-        <div className="glass-card p-4">
-          <p className="text-xs text-text-muted mb-3">Select a prospect to auto-fill invoice details</p>
-          <div className="flex flex-wrap gap-2">
-            {prospects.map((p) => (
-              <button key={p.id} onClick={() => handleSelectProspect(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  selectedProspect?.id === p.id ? "bg-indigo-500/20 border border-indigo-500/30 text-indigo-400" : "bg-space-800 border border-card-border text-text-secondary hover:bg-space-700"
-                }`}>
-                {p.companyName}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <form onSubmit={handleGenerate} className="glass-card p-4">
         <p className="text-xs text-text-muted mb-3">Generate a professional invoice — auto-fills from Brand Brain and pipeline data</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">

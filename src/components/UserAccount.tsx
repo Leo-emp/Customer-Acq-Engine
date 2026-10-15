@@ -1,35 +1,27 @@
 "use client";
 
-// ── User Account Management Tab ──
-// # Shows user profile, plan, usage stats, and settings
-// # Pre-populated in demo mode with realistic data
+// ── User Account Tab ──
+// # shows ONLY the data the user actually provided at signup
+// # reads name, email, joinedAt from localStorage — never invents data
 
 import { useState, useEffect } from "react";
 import {
   User,
   Mail,
-  Building2,
   CreditCard,
   BarChart3,
-  Shield,
   Bell,
   LogOut,
   Check,
   Crown,
   Zap,
   ArrowUpRight,
-  Copy,
-  Key,
 } from "lucide-react";
 
-// # user profile shape stored in localStorage
+// # minimal profile — only what signup saves
 interface UserProfile {
   name: string;
   email: string;
-  company: string;
-  role: string;
-  avatar: string; // # initials-based avatar
-  plan: "free" | "pro" | "enterprise";
   joinedAt: string;
 }
 
@@ -47,18 +39,7 @@ interface UsageStats {
   aiCreditsLimit: number;
 }
 
-// # demo user profile — what judges see
-const DEMO_USER: UserProfile = {
-  name: "Alex Chen",
-  email: "alex.chen@salesforce.com",
-  company: "Salesforce",
-  role: "VP of Sales",
-  avatar: "AC",
-  plan: "pro",
-  joinedAt: "2026-10-15",
-};
-
-// # demo usage stats — shows realistic activity
+// # demo usage stats — shows realistic activity levels
 const DEMO_USAGE: UsageStats = {
   leadsFound: 30,
   leadsLimit: 500,
@@ -72,7 +53,7 @@ const DEMO_USAGE: UsageStats = {
   aiCreditsLimit: 10000,
 };
 
-// # plan details for the pricing cards
+// # plan tiers for the comparison cards
 const PLANS = [
   {
     name: "Free",
@@ -108,23 +89,30 @@ const PLANS = [
 ];
 
 export default function UserAccount() {
-  // # load user from localStorage or fall back to demo
-  const [user, setUser] = useState<UserProfile>(DEMO_USER);
+  // # load user from localStorage — only what they entered at signup
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [usage] = useState<UsageStats>(DEMO_USAGE);
-  const [activeSection, setActiveSection] = useState<"profile" | "plan" | "usage" | "api" | "notifications">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "plan" | "usage" | "notifications">("profile");
   const [saved, setSaved] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
 
   // # load persisted user data on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem("userProfile");
-      if (stored) setUser(JSON.parse(stored));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setUser({
+          name: parsed.name || "",
+          email: parsed.email || "",
+          joinedAt: parsed.joinedAt || new Date().toISOString(),
+        });
+      }
     } catch {}
   }, []);
 
-  // # save profile changes
+  // # save profile changes back to localStorage
   const handleSave = () => {
+    if (!user) return;
     try {
       localStorage.setItem("userProfile", JSON.stringify(user));
     } catch {}
@@ -132,12 +120,10 @@ export default function UserAccount() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // # copy API key to clipboard (demo key)
-  const handleCopyKey = () => {
-    navigator.clipboard.writeText("acq_sk_live_demo_7f8a9b2c3d4e5f6g7h8i9j0k");
-    setCopiedKey(true);
-    setTimeout(() => setCopiedKey(false), 2000);
-  };
+  // # build initials from user name
+  const initials = user?.name
+    ? user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
 
   // # usage bar helper — returns percentage and color
   const usageBar = (used: number, limit: number) => {
@@ -151,7 +137,6 @@ export default function UserAccount() {
     { key: "profile" as const, label: "Profile", icon: <User size={16} /> },
     { key: "plan" as const, label: "Plan & Billing", icon: <CreditCard size={16} /> },
     { key: "usage" as const, label: "Usage", icon: <BarChart3 size={16} /> },
-    { key: "api" as const, label: "API Keys", icon: <Key size={16} /> },
     { key: "notifications" as const, label: "Notifications", icon: <Bell size={16} /> },
   ];
 
@@ -164,22 +149,9 @@ export default function UserAccount() {
           <p className="text-sm text-text-muted mt-1">Manage your profile, plan, and preferences</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* # plan badge */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
-            user.plan === "enterprise" ? "bg-amber-400/10 border border-amber-400/20" :
-            user.plan === "pro" ? "bg-brand-blue/10 border border-brand-blue/20" :
-            "bg-white/[0.04] border border-white/[0.06]"
-          }`}>
-            <Crown size={14} className={
-              user.plan === "enterprise" ? "text-amber-400" :
-              user.plan === "pro" ? "text-brand-blue" : "text-text-muted"
-            } />
-            <span className={`text-xs font-medium capitalize ${
-              user.plan === "enterprise" ? "text-amber-400" :
-              user.plan === "pro" ? "text-brand-blue" : "text-text-secondary"
-            }`}>
-              {user.plan} Plan
-            </span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue/10 border border-brand-blue/20">
+            <Crown size={14} className="text-brand-blue" />
+            <span className="text-xs font-medium text-brand-blue">Pro Plan</span>
           </div>
         </div>
       </div>
@@ -203,7 +175,7 @@ export default function UserAccount() {
               </button>
             ))}
 
-            {/* # sign out button at bottom */}
+            {/* # sign out */}
             <div className="pt-4 mt-4 border-t border-white/[0.06]">
               <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer">
                 <LogOut size={16} />
@@ -218,27 +190,30 @@ export default function UserAccount() {
           {/* ═══ PROFILE SECTION ═══ */}
           {activeSection === "profile" && (
             <div className="space-y-6">
-              {/* # avatar + name card */}
               <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-blue to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-brand-blue/20">
-                    {user.avatar}
+                    {initials}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-text-primary">{user.name}</h3>
-                    <p className="text-sm text-text-muted">{user.role} at {user.company}</p>
-                    <p className="text-xs text-text-muted mt-0.5">Member since {new Date(user.joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+                    <h3 className="text-lg font-semibold text-text-primary">{user?.name || "Set up your profile"}</h3>
+                    <p className="text-sm text-text-muted">{user?.email || "No email provided"}</p>
+                    {user?.joinedAt && (
+                      <p className="text-xs text-text-muted mt-0.5">
+                        Member since {new Date(user.joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* # editable fields */}
+                {/* # editable fields — only name and email */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-text-muted mb-1.5">Full Name</label>
                     <input
                       type="text"
-                      value={user.name}
-                      onChange={(e) => setUser({ ...user, name: e.target.value, avatar: e.target.value.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) })}
+                      value={user?.name || ""}
+                      onChange={(e) => setUser(prev => prev ? { ...prev, name: e.target.value } : { name: e.target.value, email: "", joinedAt: new Date().toISOString() })}
                       className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-text-primary text-sm focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/20 transition-all"
                     />
                   </div>
@@ -246,26 +221,8 @@ export default function UserAccount() {
                     <label className="block text-xs font-medium text-text-muted mb-1.5">Email</label>
                     <input
                       type="email"
-                      value={user.email}
-                      onChange={(e) => setUser({ ...user, email: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-text-primary text-sm focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Company</label>
-                    <input
-                      type="text"
-                      value={user.company}
-                      onChange={(e) => setUser({ ...user, company: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-text-primary text-sm focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-text-muted mb-1.5">Role</label>
-                    <input
-                      type="text"
-                      value={user.role}
-                      onChange={(e) => setUser({ ...user, role: e.target.value })}
+                      value={user?.email || ""}
+                      onChange={(e) => setUser(prev => prev ? { ...prev, email: e.target.value } : { name: "", email: e.target.value, joinedAt: new Date().toISOString() })}
                       className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-text-primary text-sm focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/20 transition-all"
                     />
                   </div>
@@ -282,42 +239,12 @@ export default function UserAccount() {
                   {saved && <span className="text-xs text-emerald-400">Profile updated successfully</span>}
                 </div>
               </div>
-
-              {/* # security section */}
-              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                <div className="flex items-center gap-2 mb-4">
-                  <Shield size={18} className="text-text-secondary" />
-                  <h3 className="text-sm font-semibold text-text-primary">Security</h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
-                    <div>
-                      <p className="text-sm text-text-primary">Password</p>
-                      <p className="text-xs text-text-muted">Last changed 3 days ago</p>
-                    </div>
-                    <button className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:border-white/[0.15] transition-all cursor-pointer">
-                      Change
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <div>
-                      <p className="text-sm text-text-primary">Two-Factor Authentication</p>
-                      <p className="text-xs text-emerald-400">Enabled via authenticator app</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10">
-                      <Check size={12} className="text-emerald-400" />
-                      <span className="text-xs text-emerald-400 font-medium">Active</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {/* ═══ PLAN & BILLING SECTION ═══ */}
           {activeSection === "plan" && (
             <div className="space-y-6">
-              {/* # current plan highlight */}
               <div className="p-6 rounded-2xl bg-brand-blue/[0.05] border border-brand-blue/20">
                 <div className="flex items-center justify-between">
                   <div>
@@ -333,49 +260,51 @@ export default function UserAccount() {
                 </div>
               </div>
 
-              {/* # plan comparison */}
               <div className="grid grid-cols-3 gap-4">
-                {PLANS.map((plan) => (
-                  <div
-                    key={plan.key}
-                    className={`p-5 rounded-2xl border relative ${
-                      plan.key === user.plan ? plan.border + " " + plan.bg : "border-white/[0.06] bg-white/[0.02]"
-                    }`}
-                  >
-                    {plan.popular && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-brand-blue text-white text-[10px] font-medium">
-                        Most Popular
+                {PLANS.map((plan) => {
+                  const isCurrent = plan.key === "pro";
+                  return (
+                    <div
+                      key={plan.key}
+                      className={`p-5 rounded-2xl border relative ${
+                        isCurrent ? plan.border + " " + plan.bg : "border-white/[0.06] bg-white/[0.02]"
+                      }`}
+                    >
+                      {plan.popular && (
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-brand-blue text-white text-[10px] font-medium">
+                          Most Popular
+                        </div>
+                      )}
+                      {isCurrent && (
+                        <div className="absolute -top-2.5 right-4 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-medium">
+                          Current
+                        </div>
+                      )}
+                      <h4 className={`text-sm font-semibold mb-1 ${plan.color}`}>{plan.name}</h4>
+                      <div className="flex items-baseline gap-0.5 mb-4">
+                        <span className="text-2xl font-bold text-text-primary">{plan.price}</span>
+                        <span className="text-xs text-text-muted">{plan.period}</span>
                       </div>
-                    )}
-                    {plan.key === user.plan && (
-                      <div className="absolute -top-2.5 right-4 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-medium">
-                        Current
-                      </div>
-                    )}
-                    <h4 className={`text-sm font-semibold mb-1 ${plan.color}`}>{plan.name}</h4>
-                    <div className="flex items-baseline gap-0.5 mb-4">
-                      <span className="text-2xl font-bold text-text-primary">{plan.price}</span>
-                      <span className="text-xs text-text-muted">{plan.period}</span>
+                      <ul className="space-y-2">
+                        {plan.features.map((f) => (
+                          <li key={f} className="flex items-center gap-2 text-xs text-text-secondary">
+                            <Check size={12} className={isCurrent ? "text-emerald-400" : "text-text-muted"} />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      {!isCurrent && (
+                        <button className={`w-full mt-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                          plan.key === "enterprise"
+                            ? "bg-amber-400/10 border border-amber-400/20 text-amber-400 hover:bg-amber-400/20"
+                            : "bg-white/[0.04] border border-white/[0.08] text-text-secondary hover:text-text-primary hover:border-white/[0.15]"
+                        }`}>
+                          {plan.key === "enterprise" ? "Contact Sales" : "Downgrade"}
+                        </button>
+                      )}
                     </div>
-                    <ul className="space-y-2">
-                      {plan.features.map((f) => (
-                        <li key={f} className="flex items-center gap-2 text-xs text-text-secondary">
-                          <Check size={12} className={plan.key === user.plan ? "text-emerald-400" : "text-text-muted"} />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    {plan.key !== user.plan && (
-                      <button className={`w-full mt-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                        plan.key === "enterprise"
-                          ? "bg-amber-400/10 border border-amber-400/20 text-amber-400 hover:bg-amber-400/20"
-                          : "bg-white/[0.04] border border-white/[0.08] text-text-secondary hover:text-text-primary hover:border-white/[0.15]"
-                      }`}>
-                        {plan.key === "enterprise" ? "Contact Sales" : plan.key === "free" ? "Downgrade" : "Upgrade"}
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -389,7 +318,6 @@ export default function UserAccount() {
                   <span className="text-xs text-text-muted">Oct 15 — Nov 15, 2026</span>
                 </div>
 
-                {/* # usage bars */}
                 <div className="space-y-5">
                   {[
                     { label: "Leads Found", used: usage.leadsFound, limit: usage.leadsLimit, icon: <User size={14} /> },
@@ -422,7 +350,6 @@ export default function UserAccount() {
                 </div>
               </div>
 
-              {/* # quick stats */}
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { label: "Response Rate", value: "34%", change: "+8%", positive: true },
@@ -438,74 +365,6 @@ export default function UserAccount() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* ═══ API KEYS SECTION ═══ */}
-          {activeSection === "api" && (
-            <div className="space-y-6">
-              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                <h3 className="text-sm font-semibold text-text-primary mb-1">API Keys</h3>
-                <p className="text-xs text-text-muted mb-6">Use these keys to integrate AcquireAI with your existing tools</p>
-
-                {/* # live key */}
-                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-sm text-text-primary font-medium">Live Key</span>
-                    </div>
-                    <span className="text-[10px] text-text-muted">Created Oct 15, 2026</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 rounded-lg bg-space-800 text-xs text-text-secondary font-mono">
-                      acq_sk_live_••••••••••••••••7h8i9j0k
-                    </code>
-                    <button
-                      onClick={handleCopyKey}
-                      className="p-2 rounded-lg border border-white/[0.08] hover:border-white/[0.15] text-text-muted hover:text-text-primary transition-all cursor-pointer"
-                    >
-                      {copiedKey ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* # test key */}
-                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="text-sm text-text-primary font-medium">Test Key</span>
-                    </div>
-                    <span className="text-[10px] text-text-muted">Created Oct 15, 2026</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 rounded-lg bg-space-800 text-xs text-text-secondary font-mono">
-                      acq_sk_test_••••••••••••••••3d4e5f6g
-                    </code>
-                    <button className="p-2 rounded-lg border border-white/[0.08] hover:border-white/[0.15] text-text-muted hover:text-text-primary transition-all cursor-pointer">
-                      <Copy size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                <button className="mt-4 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-text-secondary hover:text-text-primary hover:border-white/[0.15] transition-all cursor-pointer">
-                  + Generate New Key
-                </button>
-              </div>
-
-              {/* # API docs link */}
-              <div className="p-5 rounded-2xl bg-brand-blue/[0.05] border border-brand-blue/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold text-text-primary mb-1">API Documentation</h4>
-                    <p className="text-xs text-text-muted">Integrate lead generation, email outreach, and call scheduling into your workflow</p>
-                  </div>
-                  <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-blue hover:bg-blue-500 text-white text-sm font-medium transition-all cursor-pointer">
-                    View Docs <ArrowUpRight size={14} />
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -530,7 +389,6 @@ export default function UserAccount() {
                         <p className="text-sm text-text-primary">{notif.label}</p>
                         <p className="text-xs text-text-muted mt-0.5">{notif.desc}</p>
                       </div>
-                      {/* # toggle switch */}
                       <button className={`relative w-10 h-6 rounded-full transition-all cursor-pointer ${
                         notif.enabled ? "bg-brand-blue" : "bg-white/[0.08]"
                       }`}>
@@ -543,12 +401,11 @@ export default function UserAccount() {
                 </div>
               </div>
 
-              {/* # delivery channels */}
               <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
                 <h3 className="text-sm font-semibold text-text-primary mb-4">Delivery Channels</h3>
                 <div className="space-y-3">
                   {[
-                    { channel: "Email", detail: user.email, enabled: true },
+                    { channel: "Email", detail: user?.email || "Not set", enabled: !!user?.email },
                     { channel: "Slack", detail: "Not connected", enabled: false },
                     { channel: "Webhook", detail: "Not configured", enabled: false },
                   ].map((ch) => (

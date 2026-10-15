@@ -217,7 +217,7 @@ function Hero() {
                 { icon: Search, label: "Scout", active: false, color: "text-cyan-400" },
                 { icon: Mail, label: "Reach", active: false, color: "text-blue-400" },
                 { icon: Phone, label: "Closer", active: false, color: "text-violet-400" },
-                { icon: FileText, label: "Ops", active: false, color: "text-amber-400" },
+                { icon: FileText, label: "Invoice", active: false, color: "text-amber-400" },
               ].map((tab) => (
                 <div
                   key={tab.label}
@@ -268,7 +268,7 @@ function Hero() {
                   { icon: Search, agent: "Scout", message: "Discovered 48 new enterprise leads in healthcare vertical — 41 verified emails", color: "text-cyan-400", bg: "bg-cyan-400/10", time: "2m ago" },
                   { icon: Mail, agent: "Reach", message: "Batch sent 24 personalized emails to financial services prospects — 3 replies received", color: "text-blue-400", bg: "bg-blue-400/10", time: "5m ago" },
                   { icon: Phone, agent: "Closer", message: "Call with Dr. Torres (MedVista) — outcome: interested, $250-400K budget confirmed", color: "text-violet-400", bg: "bg-violet-400/10", time: "12m ago" },
-                  { icon: FileText, agent: "Ops", message: "Generated 3 invoices totaling $687,400 — all PDFs exported and ready for delivery", color: "text-amber-400", bg: "bg-amber-400/10", time: "18m ago" },
+                  { icon: FileText, agent: "Invoice", message: "Generated 3 invoices totaling $687,400 — all PDFs exported and ready for delivery", color: "text-amber-400", bg: "bg-amber-400/10", time: "18m ago" },
                 ].map((event, i) => (
                   <motion.div
                     key={i}
@@ -393,8 +393,8 @@ function Agents() {
     },
     {
       icon: FileText,
-      name: "Ops",
-      role: "Admin Agent",
+      name: "Invoice",
+      role: "Invoice Agent",
       color: "text-amber-400",
       border: "hover:border-amber-400/20",
       bg: "bg-amber-400/10",
@@ -500,7 +500,7 @@ function HowItWorks() {
     {
       number: "04",
       title: "Close and manage deals",
-      description: "Closer analyzes call outcomes with AI. Ops generates invoices and PDFs. You get a complete pipeline from stranger to signed deal.",
+      description: "Closer analyzes call outcomes with AI. Invoice generates invoices and PDFs. You get a complete pipeline from stranger to signed deal.",
       detail: "Every artifact is downloadable: PDFs, transcripts, deal summaries.",
     },
   ];
@@ -709,7 +709,7 @@ function FAQ() {
   const faqs = [
     {
       q: "What does AcquireAI actually do?",
-      a: "AcquireAI runs five specialized AI agents that handle the entire customer acquisition pipeline. Scout finds and qualifies leads from real B2B databases. Reach writes and sends personalized cold emails. QA scans every email for quality and personalization before sending. Closer makes AI-powered sales calls and analyzes conversations. Ops generates invoices and proposals. You give it a target market and it runs the full pipeline autonomously.",
+      a: "AcquireAI runs five specialized AI agents that handle the entire customer acquisition pipeline. Scout finds and qualifies leads from real B2B databases. Reach writes and sends personalized cold emails. QA scans every email for quality and personalization before sending. Closer makes AI-powered sales calls and analyzes conversations. Invoice generates invoices and proposals. You give it a target market and it runs the full pipeline autonomously.",
     },
     {
       q: "Is the lead data real or AI-generated?",

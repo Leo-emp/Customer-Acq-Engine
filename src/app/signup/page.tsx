@@ -31,10 +31,15 @@ export default function SignUpPage() {
     setLoading(true);
     setError("");
 
-    // # hackathon: skip real auth, go straight to dashboard
-    // # in production, this would POST to /api/auth/signup
+    // # hackathon: save user info to localStorage, skip real auth
     try {
       await new Promise((r) => setTimeout(r, 800));
+      // # persist name + email so UserAccount tab shows what user entered
+      localStorage.setItem("userProfile", JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        joinedAt: new Date().toISOString(),
+      }));
       router.push("/dashboard");
     } catch {
       setError("Something went wrong. Please try again.");

@@ -1,7 +1,6 @@
 "use client";
 
-import { Search, Mail, Phone, FileText, Headphones, Zap, ArrowRight, ChevronRight } from "lucide-react";
-import ActivityLog from "./ActivityLog";
+import { Search, Mail, Phone, FileText, Zap, ChevronRight, ShieldCheck } from "lucide-react";
 import type { CompanyProfile } from "@/lib/store";
 import type { PipelineStage, AgentEvent, AgentRole, Prospect, EmailDraft, CallRecord } from "@/lib/types";
 
@@ -17,13 +16,13 @@ interface OverviewDashboardProps {
   onSelectAgent: (role: AgentRole) => void;
 }
 
+// # 5 agent cards for the overview pipeline visualization
 const AGENT_CARDS: { role: AgentRole; name: string; title: string; gradient: string; desc: string }[] = [
   { role: "research", name: "Scout", title: "Research Agent", gradient: "from-blue-500 to-cyan-500", desc: "Finds & qualifies leads from web search" },
   { role: "outreach", name: "Reach", title: "Outreach Agent", gradient: "from-amber-500 to-orange-500", desc: "Drafts personalized emails & voice calls" },
   { role: "emailqa", name: "QA", title: "Email QA Agent", gradient: "from-purple-500 to-violet-500", desc: "Scans emails for quality & compliance" },
   { role: "sales", name: "Closer", title: "Sales Agent", gradient: "from-emerald-500 to-green-500", desc: "Analyzes deals & classifies outcomes" },
-  { role: "admin", name: "Ops", title: "Admin Agent", gradient: "from-indigo-500 to-violet-500", desc: "Generates invoices & contracts" },
-  { role: "support", name: "Assist", title: "Support Agent", gradient: "from-teal-500 to-cyan-500", desc: "Post-sale customer support with context" },
+  { role: "admin", name: "Invoice", title: "Invoice Agent", gradient: "from-indigo-500 to-violet-500", desc: "Generates professional invoices & PDFs" },
 ];
 
 export default function OverviewDashboard({ profile, stage, isRunning, events, prospects, emails, callRecord, onLaunch, onSelectAgent }: OverviewDashboardProps) {
@@ -49,31 +48,9 @@ export default function OverviewDashboard({ profile, stage, isRunning, events, p
         <StatCard icon={<Zap size={16} />} label="AI Actions" value={events.length} color="text-brand-glow" />
       </div>
 
-      {/* prompt input */}
-      <div className="glass-card p-2">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const input = (e.target as HTMLFormElement).elements.namedItem("prompt") as HTMLInputElement;
-            if (input.value.trim() && !isRunning) { onLaunch(input.value.trim()); input.value = ""; }
-          }}
-          className="flex items-center gap-3"
-        >
-          <input name="prompt" type="text"
-            placeholder={profile ? `Find customers for ${profile.productDescription.slice(0, 50)}...` : "e.g. Find SaaS companies that need AI automation"}
-            className="flex-1 bg-transparent text-base px-4 py-3 outline-none placeholder:text-text-muted text-text-primary"
-            disabled={isRunning} />
-          <button type="submit" disabled={isRunning}
-            className="px-6 py-3 bg-brand-blue hover:bg-blue-500 disabled:bg-space-600 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
-            {isRunning ? "Running..." : "Launch Pipeline"}
-          </button>
-        </form>
-      </div>
-
-      {/* two-column: agents + activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* acquisition pipeline */}
-        <div className="lg:col-span-2 glass-card overflow-hidden">
+      {/* acquisition pipeline — agent grid */}
+      <div className="space-y-0">
+        <div className="glass-card overflow-hidden">
           <div className="px-5 py-4 border-b border-card-border flex items-center justify-between">
             <h2 className="text-sm font-semibold text-text-primary">Acquisition Pipeline</h2>
             {stage !== "idle" && (
@@ -96,7 +73,7 @@ export default function OverviewDashboard({ profile, stage, isRunning, events, p
                   }`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${agent.gradient} flex items-center justify-center text-white ${isActive ? "" : "opacity-50 group-hover:opacity-80"} transition-opacity`}>
-                      {agent.role === "research" ? <Search size={14} /> : agent.role === "outreach" ? <Mail size={14} /> : agent.role === "sales" ? <Phone size={14} /> : agent.role === "admin" ? <FileText size={14} /> : <Headphones size={14} />}
+                      {agent.role === "research" ? <Search size={14} /> : agent.role === "outreach" ? <Mail size={14} /> : agent.role === "emailqa" ? <ShieldCheck size={14} /> : agent.role === "sales" ? <Phone size={14} /> : <FileText size={14} />}
                     </div>
                     <ChevronRight size={14} className="text-text-muted group-hover:text-text-secondary transition-colors" />
                   </div>
@@ -117,25 +94,6 @@ export default function OverviewDashboard({ profile, stage, isRunning, events, p
               );
             })}
           </div>
-          {stage === "idle" && !isRunning && (
-            <div className="px-5 pb-4">
-              <div className="text-center py-4 text-sm text-text-muted">
-                <>Type your acquisition goal above and hit Launch Pipeline to orchestrate all 5 AI agents <ArrowRight size={14} className="inline" /></>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* activity log */}
-        <div className="lg:col-span-1">
-          {events.length > 0 ? (
-            <ActivityLog events={events} />
-          ) : (
-            <div className="glass-card p-5 text-center">
-              <h3 className="text-sm font-semibold text-text-primary mb-2">Activity</h3>
-              <p className="text-xs text-text-muted">Agent activity will appear here when you launch a pipeline.</p>
-            </div>
-          )}
         </div>
       </div>
     </div>
