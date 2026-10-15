@@ -1,6 +1,7 @@
-// ── Resend email client (lazy-initialized to avoid build-time crashes) ──
+// ── Email sending: Gmail API (primary) → Resend (fallback) ──
 
 import { Resend } from "resend";
+import { sendGmail } from "./gmail";
 
 let _resend: Resend | null = null;
 
@@ -19,6 +20,19 @@ interface SendEmailParams {
 }
 
 export async function sendEmail({ to, subject, html, from }: SendEmailParams) {
+  // try Gmail API first (emails appear in user's Sent folder)
+  const hasGmail = process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN;
+
+  if (hasGmail) {
+    try {
+      const result = await sendGmail({ to, subject, html });
+      return { data: { id: result.messageId }, error: null };
+    } catch (err) {
+      console.error("Gmail send failed, falling back to Resend:", err);
+    }
+  }
+
+  // fallback to Resend
   const result = await getResend().emails.send({
     from: from || process.env.RESEND_FROM_EMAIL || "AcquireAI <onboarding@resend.dev>",
     to,
@@ -37,9 +51,6 @@ export function formatEmailHTML(body: string, companyName: string): string {
       </div>
       <div style="color: #374151; font-size: 15px; line-height: 1.7;">
         ${body.split("\n").map((line) => (line.trim() ? `<p style="margin: 0 0 12px;">${line}</p>` : "")).join("")}
-      </div>
-      <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 12px;">
-        Sent via AcquireAI
       </div>
     </div>
   `;
