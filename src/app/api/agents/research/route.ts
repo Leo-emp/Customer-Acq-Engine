@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { researchProspects } from "@/agents/research";
 import { buildBrandContext } from "@/lib/brand-context";
 import { agentThinkJSON } from "@/lib/gemini";
+import { DEMO_MODE, DEMO_PROSPECTS, DEMO_LEAD_SUMMARY, DEMO_COMPETITORS, DEMO_INDUSTRY, DEMO_MARKET } from "@/lib/demo-data";
 
 export async function POST(req: NextRequest) {
   const { action, query, profile } = await req.json();
@@ -17,6 +18,14 @@ export async function POST(req: NextRequest) {
   const features = profile?.keyFeatures?.join(", ") || "";
 
   try {
+    // # demo mode: return pre-cached responses instantly
+    if (DEMO_MODE) {
+      if (!action || action === "leads") return Response.json({ action: "leads", prospects: DEMO_PROSPECTS, summary: DEMO_LEAD_SUMMARY });
+      if (action === "competitors") return Response.json({ action: "competitors", ...DEMO_COMPETITORS });
+      if (action === "industry") return Response.json({ action: "industry", ...DEMO_INDUSTRY });
+      if (action === "market") return Response.json({ action: "market", ...DEMO_MARKET });
+    }
+
     // ── ACTION: Search for leads (Apollo) ──
     if (!action || action === "leads") {
       if (!query || typeof query !== "string") {

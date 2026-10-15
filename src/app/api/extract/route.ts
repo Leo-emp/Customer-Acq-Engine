@@ -2,6 +2,7 @@
 
 import { NextRequest } from "next/server";
 import { agentThinkJSON } from "@/lib/gemini";
+import { DEMO_MODE, DEMO_BRAND_PROFILE } from "@/lib/demo-data";
 
 // strip HTML tags and extract readable text
 function htmlToText(html: string): string {
@@ -65,6 +66,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // # demo mode: return pre-cached profile instantly
+    if (DEMO_MODE) {
+      return Response.json({ profile: DEMO_BRAND_PROFILE, url: url.trim() });
+    }
+
     // normalize URL
     let fetchUrl = url.trim();
     if (!fetchUrl.startsWith("http")) {

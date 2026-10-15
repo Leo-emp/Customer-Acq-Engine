@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { draftEmail, draftFollowUp, draftEmails, sendDraftedEmail } from "@/agents/outreach";
 import { buildBrandContext } from "@/lib/brand-context";
+import { DEMO_MODE, DEMO_EMAILS } from "@/lib/demo-data";
 import type { Prospect, EmailDraft } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -14,6 +15,28 @@ export async function POST(req: NextRequest) {
   const company = senderCompany || profile?.companyName || "Our Company";
 
   try {
+    // # demo mode: return pre-cached email drafts
+    if (DEMO_MODE) {
+      if (action === "draft" && prospect) {
+        const demo = DEMO_EMAILS.find(e => e.prospectId === (prospect as Prospect).id) || DEMO_EMAILS[0];
+        return Response.json({ email: { ...demo, body: demo.body.replace("{senderName}", name) } });
+      }
+      if (action === "draft-all") {
+        const emails = DEMO_EMAILS.map(e => ({ ...e, body: e.body.replace("{senderName}", name) }));
+        return Response.json({ emails });
+      }
+      if (action === "send") {
+        return Response.json({ email: { ...(draft as EmailDraft), sentAt: new Date().toISOString() } });
+      }
+      if (action === "send-all") {
+        const sent = (draft as EmailDraft[]).map(d => ({ ...d, sentAt: new Date().toISOString() }));
+        return Response.json({ sent, sentCount: sent.length, failedCount: 0 });
+      }
+      if (action === "followup") {
+        return Response.json({ email: { to: (prospect as Prospect).email, subject: `Re: ${(originalEmail as EmailDraft).subject}`, body: `Hi ${(prospect as Prospect).contactName},\n\nI wanted to follow up on my previous note. I understand things get busy, so I'll keep this brief.\n\nWe recently helped a similar company in ${(prospect as Prospect).industry} reduce their development time by 60% while improving their user experience metrics across the board.\n\nWould it be worth a 10-minute call to see if we could do something similar for ${(prospect as Prospect).companyName}?\n\nBest,\n${name}`, prospectId: (prospect as Prospect).id } });
+      }
+    }
+
     // draft a single personalized email
     if (action === "draft") {
       if (!prospect) return Response.json({ error: "prospect is required" }, { status: 400 });
