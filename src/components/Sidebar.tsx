@@ -42,7 +42,7 @@ const STAGE_ORDER: PipelineStage[] = [
 ];
 
 interface SidebarProps {
-  activeAgent: AgentRole;
+  activeAgent: AgentRole | null;
   onSelectAgent: (role: AgentRole) => void;
   events: AgentEvent[];
   currentStage: PipelineStage;
