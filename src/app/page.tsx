@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import {
   ArrowRight,
   Search,
@@ -121,152 +121,204 @@ function Nav() {
 
 // ── Hero ──
 function Hero() {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const y = useTransform(scrollYProgress, [0, 0.5], [0, 60]);
-
   return (
-    <section ref={ref} className="relative min-h-screen flex items-center overflow-hidden pt-20">
+    <section className="relative overflow-hidden pt-32 md:pt-40 pb-20">
       {/* background grid */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
         backgroundSize: "80px 80px",
       }} />
 
-      {/* gradient accent */}
-      <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[120px]" />
-      <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-brand-blue/[0.03] rounded-full blur-[100px]" />
+      {/* gradient accents */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-brand-blue/[0.05] rounded-full blur-[140px]" />
 
-      <motion.div style={{ opacity, y }} className="relative max-w-[1400px] mx-auto px-6 md:px-10 w-full">
-        <div className="grid lg:grid-cols-[1fr,0.8fr] gap-12 lg:gap-20 items-center">
-          {/* left — copy */}
-          <div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand-blue/20 bg-brand-blue/[0.06] mb-8"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse" />
-              <span className="text-xs font-medium text-brand-blue tracking-wide">AI-POWERED ACQUISITION</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-[clamp(2.5rem,6vw,5rem)] leading-[1.05] font-bold tracking-tight text-text-primary mb-6"
-            >
-              Five AI agents.<br />
-              <span className="text-brand-blue">One complete</span><br />
-              sales pipeline.
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="text-lg md:text-xl text-text-secondary leading-relaxed max-w-[520px] mb-10"
-            >
-              AcquireAI deploys autonomous agents that find your ideal customers,
-              write personalized outreach, make sales calls, close deals, and handle
-              support. From first touch to signed contract, without the headcount.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35 }}
-              className="flex flex-wrap items-center gap-4"
-            >
-              <Link href="/signup" className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white font-medium px-7 py-3.5 rounded-xl text-base transition-all">
-                Start Acquiring Customers
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <a href="#how-it-works" className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary font-medium px-5 py-3.5 text-base transition-colors">
-                See How It Works
-                <ChevronDown size={16} />
-              </a>
-            </motion.div>
-
-            {/* trust bar */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="mt-14 flex items-center gap-6 text-xs text-text-muted"
-            >
-              <span className="flex items-center gap-1.5"><Shield size={14} className="text-emerald-500" /> SOC 2 Ready</span>
-              <span className="w-px h-4 bg-white/[0.08]" />
-              <span className="flex items-center gap-1.5"><Globe size={14} className="text-brand-blue" /> Real B2B Data</span>
-              <span className="w-px h-4 bg-white/[0.08]" />
-              <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-amber-400" /> Gemini AI</span>
-            </motion.div>
-          </div>
-
-          {/* right — agent visualization */}
+      <div className="relative max-w-[1400px] mx-auto px-6 md:px-10 w-full">
+        {/* centered text */}
+        <div className="text-center max-w-3xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="hidden lg:block"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand-blue/20 bg-brand-blue/[0.06] mb-8"
           >
-            <div className="relative">
-              {/* terminal-style card */}
-              <div className="bg-space-800 border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
-                {/* title bar */}
-                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/[0.06]">
-                  <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse" />
+            <span className="text-xs font-medium text-brand-blue tracking-wide">AI-POWERED ACQUISITION</span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.08] font-bold tracking-tight text-text-primary mb-6"
+          >
+            Five AI agents.{" "}
+            <span className="text-brand-blue">One complete</span>{" "}
+            sales pipeline.
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="text-lg md:text-xl text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10"
+          >
+            AcquireAI deploys autonomous agents that find your ideal customers,
+            write personalized outreach, make sales calls, close deals, and handle
+            support. From first touch to signed contract, without the headcount.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="flex flex-wrap items-center justify-center gap-4 mb-6"
+          >
+            <Link href="/signup" className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white font-medium px-7 py-3.5 rounded-xl text-base transition-all">
+              Start Acquiring Customers
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <a href="#how-it-works" className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary font-medium px-5 py-3.5 text-base transition-colors">
+              See How It Works
+              <ChevronDown size={16} />
+            </a>
+          </motion.div>
+
+          {/* trust bar */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="flex items-center justify-center gap-6 text-xs text-text-muted"
+          >
+            <span className="flex items-center gap-1.5"><Shield size={14} className="text-emerald-500" /> SOC 2 Ready</span>
+            <span className="w-px h-4 bg-white/[0.08]" />
+            <span className="flex items-center gap-1.5"><Globe size={14} className="text-brand-blue" /> Real B2B Data</span>
+            <span className="w-px h-4 bg-white/[0.08]" />
+            <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-amber-400" /> Gemini AI</span>
+          </motion.div>
+        </div>
+
+        {/* dashboard preview — large, prominent */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="mt-16 md:mt-20 relative"
+        >
+          {/* glow behind the card */}
+          <div className="absolute -inset-4 bg-brand-blue/[0.04] rounded-3xl blur-2xl" />
+
+          {/* dashboard card */}
+          <div className="relative bg-space-800 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+            {/* title bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+                </div>
+                <span className="text-[11px] text-text-muted font-mono">acquire-ai — pipeline dashboard</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] text-emerald-400 font-medium">LIVE</span>
+              </div>
+            </div>
+
+            {/* dashboard content — simulated UI */}
+            <div className="grid md:grid-cols-[220px,1fr] min-h-[400px] md:min-h-[480px]">
+              {/* sidebar */}
+              <div className="hidden md:block border-r border-white/[0.04] p-4 space-y-1">
+                <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-brand-blue/10 border border-brand-blue/20">
+                  <BarChart3 size={15} className="text-brand-blue" />
+                  <span className="text-xs font-medium text-brand-blue">Dashboard</span>
+                </div>
+                {[
+                  { icon: Search, label: "Scout", color: "text-cyan-400" },
+                  { icon: Mail, label: "Reach", color: "text-blue-400" },
+                  { icon: Phone, label: "Closer", color: "text-violet-400" },
+                  { icon: FileText, label: "Ops", color: "text-amber-400" },
+                  { icon: MessageCircle, label: "Assist", color: "text-emerald-400" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.02] transition-colors">
+                    <item.icon size={15} className={item.color} />
+                    <span className="text-xs text-text-secondary">{item.label}</span>
                   </div>
-                  <span className="text-[11px] text-text-muted font-mono ml-2">acquire-ai pipeline</span>
+                ))}
+                <div className="border-t border-white/[0.04] my-3" />
+                <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.02] transition-colors">
+                  <Bot size={15} className="text-text-muted" />
+                  <span className="text-xs text-text-secondary">Brand Brain</span>
+                </div>
+              </div>
+
+              {/* main area */}
+              <div className="p-5 md:p-6">
+                {/* top stats row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  {[
+                    { label: "Leads Found", value: "7", sub: "+3 verified", color: "text-cyan-400" },
+                    { label: "Emails Sent", value: "3", sub: "100% delivered", color: "text-blue-400" },
+                    { label: "Calls Made", value: "1", sub: "CIO — interested", color: "text-violet-400" },
+                    { label: "Pipeline Value", value: "$233K", sub: "1 active deal", color: "text-amber-400" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                      <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">{stat.label}</p>
+                      <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{stat.sub}</p>
+                    </div>
+                  ))}
                 </div>
 
-                {/* agent rows */}
-                <div className="p-5 space-y-3">
+                {/* agent activity feed */}
+                <div className="space-y-2.5">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Agent Activity</p>
                   {[
-                    { icon: Search, label: "Scout", status: "Found 7 high-fit leads", color: "text-cyan-400", bg: "bg-cyan-400/10" },
-                    { icon: Mail, label: "Reach", status: "3 personalized emails sent", color: "text-blue-400", bg: "bg-blue-400/10" },
-                    { icon: Phone, label: "Closer", status: "Call scheduled with CIO", color: "text-violet-400", bg: "bg-violet-400/10" },
-                    { icon: FileText, label: "Ops", status: "Invoice generated — $233K", color: "text-amber-400", bg: "bg-amber-400/10" },
-                    { icon: MessageCircle, label: "Assist", status: "Standing by for support", color: "text-emerald-400", bg: "bg-emerald-400/10" },
-                  ].map((agent, i) => (
+                    { icon: Search, agent: "Scout", message: "Found 7 high-fit CRM prospects — 6 verified emails across healthcare, fintech, manufacturing", color: "text-cyan-400", bg: "bg-cyan-400/10", time: "2m ago" },
+                    { icon: Mail, agent: "Reach", message: "Sent personalized email to Dr. Rachel Torres at MedVista Health Systems", color: "text-blue-400", bg: "bg-blue-400/10", time: "1m ago" },
+                    { icon: Mail, agent: "Reach", message: "Sent personalized email to James Whitfield at Pinnacle Financial Group", color: "text-blue-400", bg: "bg-blue-400/10", time: "1m ago" },
+                    { icon: Phone, agent: "Closer", message: "Call completed with Dr. Torres — outcome: interested, budget $250-400K confirmed", color: "text-violet-400", bg: "bg-violet-400/10", time: "30s ago" },
+                    { icon: FileText, agent: "Ops", message: "Invoice INV-SF2026-001 generated — $233,200.00 for MedVista Health Systems", color: "text-amber-400", bg: "bg-amber-400/10", time: "just now" },
+                  ].map((event, i) => (
                     <motion.div
-                      key={agent.label}
-                      initial={{ opacity: 0, x: 16 }}
+                      key={i}
+                      initial={{ opacity: 0, x: 12 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: 0.6 + i * 0.12 }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors"
+                      transition={{ duration: 0.4, delay: 0.8 + i * 0.15 }}
+                      className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.015] border border-white/[0.03]"
                     >
-                      <div className={`w-9 h-9 rounded-lg ${agent.bg} flex items-center justify-center`}>
-                        <agent.icon size={16} className={agent.color} />
+                      <div className={`w-7 h-7 rounded-lg ${event.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                        <event.icon size={13} className={event.color} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-text-primary">{agent.label}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span className="text-xs font-medium text-text-primary">{event.agent}</span>
+                          <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                          <span className="text-[10px] text-text-muted ml-auto shrink-0">{event.time}</span>
                         </div>
-                        <p className="text-xs text-text-muted truncate">{agent.status}</p>
+                        <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed truncate md:whitespace-normal">{event.message}</p>
                       </div>
                     </motion.div>
                   ))}
                 </div>
-
-                {/* bottom bar */}
-                <div className="px-5 py-3 border-t border-white/[0.06] bg-emerald-500/[0.03]">
-                  <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Pipeline complete — 5/5 agents finished
-                  </div>
-                </div>
               </div>
             </div>
-          </motion.div>
-        </div>
-      </motion.div>
+
+            {/* bottom status bar */}
+            <div className="px-5 py-2.5 border-t border-white/[0.06] bg-emerald-500/[0.03] flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Pipeline complete — 5/5 agents finished successfully
+              </div>
+              <span className="text-[10px] text-text-muted font-mono hidden md:block">Salesforce CRM Demo</span>
+            </div>
+          </div>
+
+          {/* bottom fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-space-900 to-transparent pointer-events-none" />
+        </motion.div>
+      </div>
     </section>
   );
 }
