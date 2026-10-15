@@ -47,11 +47,14 @@ export async function researchProspects(prompt: string): Promise<Prospect[]> {
     return [];
   }
 
+  // build a lookup map for email verification status
+  const emailVerifiedMap = new Map(leads.map((l, i) => [`p${i + 1}`, { verified: l.emailVerified, email: l.email }]));
+
   // format Apollo results for Gemini scoring
   const leadsText = leads
     .map(
       (l, i) =>
-        `[${i + 1}] ${l.name} — ${l.title}\n    Company: ${l.companyName}\n    Industry: ${l.industry}\n    Location: ${l.location}\n    Website: ${l.website}\n    Email: ${l.email}\n    LinkedIn: ${l.linkedinUrl}\n    Employees: ${l.employeeCount}`
+        `[${i + 1}] ${l.name} — ${l.title}\n    Company: ${l.companyName}\n    Industry: ${l.industry}\n    Location: ${l.location}\n    Website: ${l.website}\n    Email: ${l.email || "NOT AVAILABLE"}${l.emailVerified ? " (VERIFIED)" : ""}\n    LinkedIn: ${l.linkedinUrl}\n    Employees: ${l.employeeCount}`
     )
     .join("\n\n");
 
@@ -82,9 +85,14 @@ Return JSON: { "prospects": [{ "id": "p1", "companyName": "...", "contactName": 
     `Business goal: ${prompt}\n\nReal B2B leads found:\n${leadsText}`
   );
 
-  return scored.prospects.map((p, i) => ({
-    ...p,
-    id: p.id || `p${i + 1}`,
-    status: "new" as const,
-  }));
+  return scored.prospects.map((p, i) => {
+    const id = p.id || `p${i + 1}`;
+    const verifyInfo = emailVerifiedMap.get(id);
+    return {
+      ...p,
+      id,
+      status: "new" as const,
+      emailVerified: verifyInfo?.verified ?? false,
+    };
+  });
 }

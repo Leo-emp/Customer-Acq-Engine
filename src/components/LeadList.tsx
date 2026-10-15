@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ShieldCheck, ShieldAlert } from "lucide-react";
 import type { Prospect } from "@/lib/types";
 
 const STATUS_BADGES: Record<string, { label: string; color: string }> = {
@@ -84,7 +84,20 @@ export default function LeadList({ prospects, activeProspectId, onSelect }: Lead
                   <td className="px-4 py-3">
                     <div>
                       <span className="text-text-primary">{prospect.contactName}</span>
-                      <div className="text-xs text-text-muted">{prospect.email}</div>
+                      <div className="flex items-center gap-1 text-xs">
+                        {prospect.email ? (
+                          <>
+                            <span className="text-text-muted">{prospect.email}</span>
+                            {prospect.emailVerified ? (
+                              <span className="flex-shrink-0" aria-label="Email verified"><ShieldCheck size={12} className="text-emerald-400" /></span>
+                            ) : (
+                              <span className="flex-shrink-0" aria-label="Email unverified"><ShieldAlert size={12} className="text-amber-400" /></span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-rose-400 italic">No email</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-text-muted">{prospect.industry}</td>

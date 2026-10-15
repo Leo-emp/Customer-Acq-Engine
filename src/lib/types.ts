@@ -23,6 +23,7 @@ export interface Prospect {
   companyName: string;
   contactName: string;
   email: string;
+  emailVerified?: boolean;
   website: string;
   industry: string;
   fitReason: string; // why they're a good lead

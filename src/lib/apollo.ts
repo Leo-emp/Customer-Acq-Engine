@@ -1,3 +1,15 @@
+import dns from "dns/promises";
+
+// verify a domain has MX records (can receive email)
+async function verifyMX(domain: string): Promise<boolean> {
+  try {
+    const records = await dns.resolveMx(domain);
+    return records.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 interface ApolloPersonResult {
   id: string;
   first_name: string;
@@ -30,6 +42,7 @@ export interface ApolloLead {
   name: string;
   title: string;
   email: string;
+  emailVerified: boolean;
   companyName: string;
   website: string;
   industry: string;
@@ -73,11 +86,12 @@ export async function searchPeople(params: {
 
   const data: ApolloSearchResponse = await res.json();
 
-  return (data.people || []).map((p) => ({
+  const leads = (data.people || []).map((p) => ({
     id: p.id,
     name: p.name || `${p.first_name} ${p.last_name}`.trim(),
     title: p.title || "Unknown",
-    email: p.email || `info@${p.organization?.website_url?.replace(/^https?:\/\//, "").replace(/\/.*/, "") || "unknown.com"}`,
+    email: p.email || "",
+    emailVerified: !!p.email,
     companyName: p.organization?.name || "Unknown",
     website: p.organization?.website_url || "",
     industry: p.organization?.industry || "Unknown",
@@ -85,4 +99,17 @@ export async function searchPeople(params: {
     employeeCount: p.organization?.estimated_num_employees || 0,
     linkedinUrl: p.linkedin_url || "",
   }));
+
+  // verify emails via MX record check for leads that have them
+  const verified = await Promise.all(
+    leads.map(async (lead) => {
+      if (!lead.email) return lead;
+      const domain = lead.email.split("@")[1];
+      if (!domain) return { ...lead, emailVerified: false };
+      const mxValid = await verifyMX(domain);
+      return { ...lead, emailVerified: mxValid };
+    })
+  );
+
+  return verified;
 }
