@@ -163,6 +163,7 @@ export default function Sidebar({
           <div className="flex-1 text-left">
             <span className="text-sm font-medium">Brand Brain</span>
             {!hasProfile && <p className="text-[10px] text-amber-400">Not configured</p>}
+            {hasProfile && <p className="text-[10px] text-emerald-400">Configured</p>}
           </div>
         </button>
 

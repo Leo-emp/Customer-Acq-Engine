@@ -1135,6 +1135,8 @@ function EmailQAPanel({ emails, onAddEvent }: {
   const [scanProgress, setScanProgress] = useState(0);
   const [coldScanComplete, setColdScanComplete] = useState(false);
   const [followupScanComplete, setFollowupScanComplete] = useState(false);
+  // # follow-up emails come from demo data directly (Reach drafts them locally)
+  const followupEmails = DEMO_MODE ? (DEMO_FOLLOWUP_EMAILS as EmailDraft[]) : [];
 
   // # verdict styling map
   const verdictConfig: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
@@ -1202,69 +1204,6 @@ function EmailQAPanel({ emails, onAddEvent }: {
     setIsScanning(false);
   };
 
-  // # render QA results grid + cards (shared between both tabs)
-  const renderResults = (results: EmailQAResult[]) => (
-    <div className="space-y-2 mt-3">
-      {/* summary stats */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2.5 text-center">
-          <p className="text-lg font-bold text-emerald-400">{results.filter(r => r.verdict === "approved").length}</p>
-          <p className="text-[10px] text-text-muted">Approved</p>
-        </div>
-        <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-2.5 text-center">
-          <p className="text-lg font-bold text-amber-400">{results.filter(r => r.verdict === "rewrite_copy").length}</p>
-          <p className="text-[10px] text-text-muted">Rewrite</p>
-        </div>
-        <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-2.5 text-center">
-          <p className="text-lg font-bold text-orange-400">{results.filter(r => r.verdict === "needs_personalization").length}</p>
-          <p className="text-[10px] text-text-muted">Personalize</p>
-        </div>
-        <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-2.5 text-center">
-          <p className="text-lg font-bold text-rose-400">{results.filter(r => r.verdict === "flagged_confidential").length}</p>
-          <p className="text-[10px] text-text-muted">Flagged</p>
-        </div>
-      </div>
-      {/* individual result cards */}
-      {results.map((result, i) => {
-        const cfg = verdictConfig[result.verdict] || verdictConfig.approved;
-        return (
-          <div key={i} className={`p-3 rounded-lg border ${cfg.border} ${cfg.bg}`}>
-            <div className="flex items-start justify-between mb-1.5">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className={cfg.color}>{cfg.icon}</span>
-                  <span className="text-sm font-medium text-text-primary truncate">{result.companyName}</span>
-                </div>
-                <p className="text-[11px] text-text-muted mt-0.5 truncate">{result.to}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>{cfg.label}</span>
-                <span className="text-[10px] text-text-muted">{result.confidence}%</span>
-                {result.autoSent && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] text-emerald-400 font-medium">
-                    <Send size={8} /> Sent
-                  </span>
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-text-secondary leading-relaxed">{result.reason}</p>
-            {result.suggestions && result.suggestions.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
-                {result.suggestions.map((s, j) => (
-                  <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
-                    <span className="mt-0.5">&bull;</span>
-                    <span>{s}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-
   // # scanning animation (shared between both tabs)
   const renderScanAnimation = (total: number, emailList: { to: string }[]) => (
     <div className="space-y-3">
@@ -1302,7 +1241,7 @@ function EmailQAPanel({ emails, onAddEvent }: {
 
   return (
     <div className="space-y-4">
-      {/* tab switcher */}
+      {/* tab switcher — no number badges */}
       <div className="flex gap-2">
         <button onClick={() => setActiveTab("scan-cold")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
@@ -1311,7 +1250,6 @@ function EmailQAPanel({ emails, onAddEvent }: {
               : "bg-space-800 border border-card-border text-text-muted hover:text-text-secondary"
           }`}>
           <ShieldCheck size={14} /> Scan Cold Emails
-          {emails.length > 0 && <span className="text-[10px] bg-space-700 px-1.5 py-0.5 rounded-md">{emails.length}</span>}
         </button>
         <button onClick={() => setActiveTab("scan-followups")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
@@ -1320,78 +1258,156 @@ function EmailQAPanel({ emails, onAddEvent }: {
               : "bg-space-800 border border-card-border text-text-muted hover:text-text-secondary"
           }`}>
           <ShieldCheck size={14} /> Scan Follow-Ups
-          <span className="text-[10px] bg-space-700 px-1.5 py-0.5 rounded-md">{DEMO_FOLLOWUP_EMAILS.length}</span>
         </button>
       </div>
 
       {/* ── TAB 1: SCAN COLD EMAILS ── */}
       {activeTab === "scan-cold" && (
-        <div className="glass-card p-4 border border-purple-500/20">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-purple-400" />
-              <h4 className="text-sm font-semibold text-text-primary">Cold Email QA</h4>
-              <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-[10px] font-medium text-purple-400 border border-purple-500/20">AI Review</span>
+        <div className="space-y-4">
+          {/* show drafted cold emails from Reach */}
+          {emails.length === 0 ? (
+            <div className="glass-card p-6 text-center">
+              <Mail size={24} className="text-text-muted mx-auto mb-2" />
+              <p className="text-sm text-text-muted mb-1">No cold email drafts yet</p>
+              <p className="text-xs text-text-muted">Draft emails in the Reach agent first, then come back to scan them.</p>
             </div>
-            {coldScanComplete && (
-              <span className="text-[11px] text-emerald-400">{coldQaResults.filter(r => r.verdict === "approved").length} approved</span>
-            )}
-          </div>
-          <p className="text-xs text-text-muted mb-3">
-            Scans cold email drafts from Reach for quality, personalization, and compliance.
-          </p>
+          ) : (
+            <>
+              {/* display each cold email draft */}
+              <div className="space-y-3">
+                {emails.map((email, i) => (
+                  <div key={`cold-preview-${i}`} className="glass-card overflow-hidden">
+                    <div className="px-4 py-3 border-b border-card-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-text-muted">To: <span className="text-text-primary">{email.to}</span></p>
+                          <p className="text-xs text-text-muted mt-0.5">Subject: <span className="text-text-primary font-medium">{email.subject}</span></p>
+                        </div>
+                        {/* show QA verdict badge if scan complete */}
+                        {coldScanComplete && coldQaResults[i] && (() => {
+                          const cfg = verdictConfig[coldQaResults[i].verdict] || verdictConfig.approved;
+                          return (
+                            <span className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                              {cfg.icon} {cfg.label}
+                            </span>
+                          );
+                        })()}
+                        {!coldScanComplete && (
+                          <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-[11px] text-amber-400 font-medium">
+                            <Clock size={12} /> Pending QA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-4 py-3">
+                      <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
+                    </div>
+                    {/* show QA feedback inline if scan complete */}
+                    {coldScanComplete && coldQaResults[i] && (
+                      <div className="px-4 py-3 border-t border-card-border bg-space-800/50">
+                        <p className="text-xs text-text-secondary leading-relaxed">{coldQaResults[i].reason}</p>
+                        {coldQaResults[i].suggestions && coldQaResults[i].suggestions!.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
+                            {coldQaResults[i].suggestions!.map((s, j) => (
+                              <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
+                                <span className="mt-0.5">&bull;</span><span>{s}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-          {/* empty state */}
-          {emails.length === 0 && !coldScanComplete && (
-            <p className="text-xs text-text-muted p-3 bg-space-800 rounded-lg">No cold email drafts yet. Draft emails in the Reach agent first.</p>
+              {/* scan button */}
+              {!isScanning && !coldScanComplete && (
+                <button onClick={handleScanCold}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-sm font-medium text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer">
+                  <ShieldCheck size={16} /> Scan Cold Emails
+                </button>
+              )}
+
+              {/* scanning animation */}
+              {isScanning && activeTab === "scan-cold" && renderScanAnimation(Math.min(emails.length, 10), emails)}
+            </>
           )}
-
-          {/* scan button */}
-          {emails.length > 0 && !isScanning && !coldScanComplete && (
-            <button onClick={handleScanCold}
-              className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer">
-              <ShieldCheck size={14} /> Scan {Math.min(emails.length, 10)} Cold Emails
-            </button>
-          )}
-
-          {/* scanning animation */}
-          {isScanning && activeTab === "scan-cold" && renderScanAnimation(Math.min(emails.length, 10), emails)}
-
-          {/* results */}
-          {coldScanComplete && coldQaResults.length > 0 && renderResults(coldQaResults)}
         </div>
       )}
 
       {/* ── TAB 2: SCAN FOLLOW-UPS ── */}
       {activeTab === "scan-followups" && (
-        <div className="glass-card p-4 border border-purple-500/20">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-purple-400" />
-              <h4 className="text-sm font-semibold text-text-primary">Follow-Up QA</h4>
-              <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-[10px] font-medium text-purple-400 border border-purple-500/20">AI Review</span>
+        <div className="space-y-4">
+          {/* show follow-up email drafts from Reach */}
+          {followupEmails.length === 0 ? (
+            <div className="glass-card p-6 text-center">
+              <RefreshCw size={24} className="text-text-muted mx-auto mb-2" />
+              <p className="text-sm text-text-muted mb-1">No follow-up drafts yet</p>
+              <p className="text-xs text-text-muted">Write follow-ups in the Reach agent first, then come back to scan them.</p>
             </div>
-            {followupScanComplete && (
-              <span className="text-[11px] text-emerald-400">{followupQaResults.filter(r => r.verdict === "approved").length} approved</span>
-            )}
-          </div>
-          <p className="text-xs text-text-muted mb-3">
-            Scans follow-up email drafts from Reach for quality and personalization.
-          </p>
+          ) : (
+            <>
+              {/* display each follow-up draft */}
+              <div className="space-y-3">
+                {followupEmails.map((email, i) => (
+                  <div key={`followup-preview-${i}`} className="glass-card overflow-hidden">
+                    <div className="px-4 py-3 border-b border-card-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-text-muted">To: <span className="text-text-primary">{email.to}</span></p>
+                          <p className="text-xs text-text-muted mt-0.5">Subject: <span className="text-text-primary font-medium">{email.subject}</span></p>
+                        </div>
+                        {followupScanComplete && followupQaResults[i] && (() => {
+                          const cfg = verdictConfig[followupQaResults[i].verdict] || verdictConfig.approved;
+                          return (
+                            <span className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                              {cfg.icon} {cfg.label}
+                            </span>
+                          );
+                        })()}
+                        {!followupScanComplete && (
+                          <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 text-[11px] text-blue-400 font-medium">
+                            <Clock size={12} /> Pending QA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-4 py-3">
+                      <div className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">{email.body}</div>
+                    </div>
+                    {followupScanComplete && followupQaResults[i] && (
+                      <div className="px-4 py-3 border-t border-card-border bg-space-800/50">
+                        <p className="text-xs text-text-secondary leading-relaxed">{followupQaResults[i].reason}</p>
+                        {followupQaResults[i].suggestions && followupQaResults[i].suggestions!.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">Suggestions</p>
+                            {followupQaResults[i].suggestions!.map((s, j) => (
+                              <div key={j} className="flex items-start gap-1.5 text-[11px] text-text-muted">
+                                <span className="mt-0.5">&bull;</span><span>{s}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-          {/* scan button */}
-          {!isScanning && !followupScanComplete && (
-            <button onClick={handleScanFollowups}
-              className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer">
-              <ShieldCheck size={14} /> Scan {DEMO_FOLLOWUP_EMAILS.length} Follow-Up Emails
-            </button>
+              {/* scan button */}
+              {!isScanning && !followupScanComplete && (
+                <button onClick={handleScanFollowups}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-sm font-medium text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer">
+                  <ShieldCheck size={16} /> Scan Follow-Ups
+                </button>
+              )}
+
+              {/* scanning animation */}
+              {isScanning && activeTab === "scan-followups" && renderScanAnimation(followupEmails.length, followupEmails)}
+            </>
           )}
-
-          {/* scanning animation */}
-          {isScanning && activeTab === "scan-followups" && renderScanAnimation(DEMO_FOLLOWUP_EMAILS.length, DEMO_FOLLOWUP_EMAILS)}
-
-          {/* results */}
-          {followupScanComplete && followupQaResults.length > 0 && renderResults(followupQaResults)}
         </div>
       )}
     </div>
