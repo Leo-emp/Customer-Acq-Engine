@@ -11,10 +11,10 @@ interface InvoiceViewProps {
 export default function InvoiceView({ invoice, pdfDataUrl }: InvoiceViewProps) {
   if (!invoice) return null;
 
+  // # download the cached PDF from public/ in demo mode, or the generated data URL in live mode
   const handleDownload = () => {
-    if (!pdfDataUrl) return;
     const link = document.createElement("a");
-    link.href = pdfDataUrl;
+    link.href = pdfDataUrl || "/salesforce_invoice.pdf";
     link.download = `${invoice.id}.pdf`;
     link.click();
   };
@@ -27,14 +27,12 @@ export default function InvoiceView({ invoice, pdfDataUrl }: InvoiceViewProps) {
           Invoice {invoice.id}
         </h3>
 
-        {pdfDataUrl && (
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-500 text-white rounded-lg transition-colors cursor-pointer"
-          >
-            <Download size={12} /> Download PDF
-          </button>
-        )}
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-brand-blue hover:bg-blue-500 text-white rounded-lg transition-colors cursor-pointer"
+        >
+          <Download size={12} /> Export PDF
+        </button>
       </div>
 
       <div className="p-4 space-y-4">

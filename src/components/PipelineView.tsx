@@ -78,6 +78,7 @@ export default function PipelineView({ profile, stage, isRunning, events, onLaun
           <input
             name="prompt"
             type="text"
+            defaultValue="Find me customers"
             placeholder={
               profile
                 ? `Find customers for ${profile.productDescription.slice(0, 50)}...`
