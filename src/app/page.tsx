@@ -317,7 +317,7 @@ function Problem() {
     },
     {
       stat: "$200K+",
-      label: "annual cost per SDR before they close a single deal",
+      label: "annual cost per SDR before closing a deal",
       detail: "Salary, tools, training, management overhead. And turnover averages 34% per year.",
     },
   ];
@@ -335,7 +335,7 @@ function Problem() {
         <div className="grid md:grid-cols-3 gap-6 mt-16">
           {problems.map((p, i) => (
             <Reveal key={i} delay={i * 0.1}>
-              <div className="group p-8 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all">
+              <div className="group p-8 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all h-full">
                 <span className="text-5xl md:text-6xl font-bold text-text-primary tracking-tight">{p.stat}</span>
                 <p className="text-base font-medium text-text-primary mt-3 mb-3">{p.label}</p>
                 <p className="text-sm text-text-muted leading-relaxed">{p.detail}</p>
