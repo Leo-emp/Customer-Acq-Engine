@@ -1824,8 +1824,22 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
   // # pre-fill all 4 fields from the cached Salesforce → MedVista deal
   const [companyName, setCompanyName] = useState("MedVista Health Systems");
   const [contactName, setContactName] = useState("Dr. Rachel Torres");
-  const [goodsServices, setGoodsServices] = useState("Sales Cloud Enterprise (50 licenses), Service Cloud Professional (20 licenses), Einstein AI Add-on (50 seats), Implementation & Configuration, Data Migration & Integration, Training Program");
-  const [price, setPrice] = useState("$233,200.00");
+  const [goodsServices] = useState([
+    "Salesforce Sales Cloud Enterprise (50 licenses)",
+    "Salesforce Service Cloud Professional (20 licenses)",
+    "Einstein AI Add-on (50 seats)",
+    "Implementation & Configuration Services",
+    "Data Migration & Integration",
+    "Training Program (40 hours)",
+  ]);
+  const [prices] = useState([
+    "$99,000.00",
+    "$19,200.00",
+    "$30,000.00",
+    "$45,000.00",
+    "$28,000.00",
+    "$12,000.00",
+  ]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [genInvoice, setGenInvoice] = useState<Invoice | null>(null);
   const [genPdf, setGenPdf] = useState("");
@@ -1858,8 +1872,8 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
           action: "generate",
           companyName: client,
           contactName: contactName.trim() || undefined,
-          productDescription: goodsServices.trim() || profile?.productDescription || "Consulting services",
-          dealSummary: goodsServices.trim() || undefined,
+          productDescription: goodsServices.join(", ") || profile?.productDescription || "Consulting services",
+          dealSummary: goodsServices.join(", ") || undefined,
           profile,
         }),
       });
@@ -1889,11 +1903,35 @@ function AdminTool({ invoice, pdfDataUrl, profile, onAddEvent, prospects }: {
           <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Contact name"
             className="bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted" disabled={isGenerating} />
         </div>
-        <textarea value={goodsServices} onChange={(e) => setGoodsServices(e.target.value)} placeholder="Purchasing goods and services"
-          rows={3}
-          className="w-full bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted mb-3 resize-none" disabled={isGenerating} />
-        <input type="text" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Total price"
-          className="w-full bg-space-800 border border-card-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500/50 text-text-primary placeholder:text-text-muted mb-3" disabled={isGenerating} />
+        {/* # goods/services and price side by side as bullet lists */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div className="bg-space-800 border border-card-border rounded-lg px-4 py-3">
+            <p className="text-[11px] text-text-muted mb-2 font-medium uppercase tracking-wider">Purchasing Goods & Services</p>
+            <ul className="space-y-1.5">
+              {goodsServices.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
+                  <span className="text-indigo-400 mt-1 text-xs">&#8226;</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="bg-space-800 border border-card-border rounded-lg px-4 py-3">
+            <p className="text-[11px] text-text-muted mb-2 font-medium uppercase tracking-wider">Price</p>
+            <ul className="space-y-1.5">
+              {prices.map((p, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
+                  <span className="text-indigo-400 mt-1 text-xs">&#8226;</span>
+                  {p}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 pt-2 border-t border-white/[0.06] flex justify-between">
+              <span className="text-xs font-semibold text-text-secondary">Total</span>
+              <span className="text-sm font-bold text-indigo-400">$233,200.00</span>
+            </div>
+          </div>
+        </div>
         <button type="submit" disabled={!companyName.trim() || isGenerating}
           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-space-700 disabled:text-text-muted text-white font-medium rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm">
           {isGenerating ? (<><Loader2 size={16} className="animate-spin" /> Generating...</>) : (<><FileText size={16} /> Generate Invoice</>)}
