@@ -11,7 +11,7 @@
 AcquireAI is a fully autonomous B2B customer acquisition platform. You configure your company identity once (Brand Brain), click "Run Pipeline", and five specialized AI agents handle the entire sales funnel without human intervention:
 
 ```
-Scout (30 leads) --> Reach (30 emails) --> QA (30 scans) --> Closer (AI call) --> Ops (invoice)
+Scout (Min - 30 leads) --> Reach (Min - 30 emails) --> QA (Min - 30 scans) --> Closer (AI call) --> Ops (invoice)
 ```
 
 **Total runtime: ~72 seconds. Zero human intervention.**
